@@ -15,8 +15,10 @@ const initialState = {
  * actions automatically.
  */
 export const loginUser = createAsyncThunk("auth/loginUser", async ({email, password}, {rejectWithValue}) => {
+  console.log('login :', email, password)
   try {
     const data = await login({email, password});
+    console.log('login response :', data)
     return data;
   } catch (error) {
     console.log('error in login a user:', error);
