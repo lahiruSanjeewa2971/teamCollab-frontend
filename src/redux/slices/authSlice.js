@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { login, register } from "../../api/authService";
+import { login, register, refreshToken, logout } from "../../api/authService";
 import { setError } from "./errorSlice";
+import { isTokenExpired, needsRefresh } from "../../utils/tokenUtils";
 
 const initialState = {
   user: (() => {
@@ -14,7 +15,10 @@ const initialState = {
   })(),
   token: localStorage.getItem("accessToken"),
   refreshToken: localStorage.getItem("refreshToken"),
-  isAuthenticated: !!localStorage.getItem("accessToken"),
+  isAuthenticated: (() => {
+    const token = localStorage.getItem("accessToken");
+    return token ? !isTokenExpired(token) : false;
+  })(),
   isLoading: false,
   alertMessage: null,
 };
@@ -67,6 +71,35 @@ export const registerUser = createAsyncThunk("auth/registerUser", async({name, e
   }
 })
 
+export const refreshUserToken = createAsyncThunk("auth/refreshUserToken", async (_, { getState, rejectWithValue }) => {
+  try {
+    const { refreshToken: refreshTokenValue } = getState().auth;
+    if (!refreshTokenValue) {
+      throw new Error('No refresh token available');
+    }
+    
+    const data = await refreshToken(refreshTokenValue);
+    return data;
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    return rejectWithValue('Failed to refresh token');
+  }
+});
+
+export const logoutUser = createAsyncThunk("auth/logoutUser", async (_, { getState, rejectWithValue }) => {
+  try {
+    const { refreshToken: refreshTokenValue } = getState().auth;
+    if (refreshTokenValue) {
+      await logout(refreshTokenValue);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error logging out:', error);
+    // Even if logout fails on backend, we should still clear local state
+    return { success: true };
+  }
+});
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -86,6 +119,26 @@ const authSlice = createSlice({
     },
     setLoading: (state, action) => {
       state.isLoading = action.payload;
+    },
+    updateTokens: (state, action) => {
+      const { accessToken, refreshToken: newRefreshToken } = action.payload;
+      state.token = accessToken;
+      if (newRefreshToken) {
+        state.refreshToken = newRefreshToken;
+      }
+      state.isAuthenticated = true;
+      
+      localStorage.setItem('accessToken', accessToken);
+      if (newRefreshToken) {
+        localStorage.setItem('refreshToken', newRefreshToken);
+      }
+    },
+    checkTokenExpiration: (state) => {
+      if (state.token && isTokenExpired(state.token)) {
+        state.isAuthenticated = false;
+        state.token = null;
+        localStorage.removeItem('accessToken');
+      }
     },
   },
   // extra reducer comes with asyncThunk
@@ -122,8 +175,58 @@ const authSlice = createSlice({
       .addCase(registerUser.rejected, (state) => {
         state.isLoading = false;
       })
+      .addCase(refreshUserToken.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(refreshUserToken.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.token = action.payload.accessToken;
+        if (action.payload.refreshToken) {
+          state.refreshToken = action.payload.refreshToken;
+        }
+        state.isAuthenticated = true;
+        
+        localStorage.setItem('accessToken', action.payload.accessToken);
+        if (action.payload.refreshToken) {
+          localStorage.setItem('refreshToken', action.payload.refreshToken);
+        }
+      })
+      .addCase(refreshUserToken.rejected, (state) => {
+        state.isLoading = false;
+        state.isAuthenticated = false;
+        state.token = null;
+        state.refreshToken = null;
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      })
+      .addCase(logoutUser.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.isLoading = false;
+        state.user = null;
+        state.token = null;
+        state.refreshToken = null;
+        state.isAuthenticated = false;
+        
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+      })
+      .addCase(logoutUser.rejected, (state) => {
+        state.isLoading = false;
+        // Even if logout fails, clear local state
+        state.user = null;
+        state.token = null;
+        state.refreshToken = null;
+        state.isAuthenticated = false;
+        
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+      })
   }
 });
 
-export const { setUser, setLoading, clearAuth } = authSlice.actions;
+export const { setUser, setLoading, clearAuth, updateTokens, checkTokenExpiration } = authSlice.actions;
 export default authSlice.reducer;

@@ -1,14 +1,70 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "react-toastify";
+import { createTeamAsync, getTeamsAsync, clearTeamError } from "../redux/slices/teamSlice";
+import { clearError } from "../redux/slices/errorSlice";
+import { createTeamSchema } from "../lib/teamSchemas";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
 import TopBar from "../components/TopBar";
 import Footer from "../components/Footer";
 
 export default function Teams() {
-  const [teamName, setTeamName] = useState("");
-  const [teamDescription, setTeamDescription] = useState("");
+  const dispatch = useDispatch();
+  const { teams, isLoading, isCreating } = useSelector((state) => state.team);
+  const errorMessage = useSelector((state) => state.error.message);
   const [teamCode, setTeamCode] = useState("");
+  const navigate = useNavigate();
 
-  const teams = [
+  // Team creation form
+  const createTeamForm = useForm({
+    resolver: zodResolver(createTeamSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      members: [],
+    },
+  });
+
+  // Fetch teams on component mount
+  useEffect(() => {
+    dispatch(getTeamsAsync());
+  }, [dispatch]);
+
+  // Handle team creation
+  const handleCreateTeam = async (data) => {
+    console.log("Creating team:", data);
+    
+    try {
+      const resultAction = await dispatch(createTeamAsync(data));
+      
+      if (createTeamAsync.fulfilled.match(resultAction)) {
+        toast.success("Team created successfully!");
+        createTeamForm.reset();
+        // Refresh teams list
+        dispatch(getTeamsAsync());
+      } else if (createTeamAsync.rejected.match(resultAction)) {
+        toast.error(resultAction.payload || "Team creation failed. Please try again.");
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred. Please try again.");
+    }
+  };
+
+  const handleJoinTeam = () => {
+    if (teamCode.trim()) {
+      console.log("Joining team with code:", teamCode);
+      setTeamCode("");
+      // TODO: Implement team joining logic
+    }
+  };
+
+  // Mock teams data for display (will be replaced by Redux state)
+  const mockTeams = [
     {
       id: 1,
       name: "Marketing Campaigns",
@@ -47,22 +103,8 @@ export default function Teams() {
     }
   ];
 
-  const handleCreateTeam = () => {
-    if (teamName.trim()) {
-      console.log("Creating team:", { name: teamName, description: teamDescription });
-      setTeamName("");
-      setTeamDescription("");
-      // TODO: Implement team creation logic
-    }
-  };
-
-  const handleJoinTeam = () => {
-    if (teamCode.trim()) {
-      console.log("Joining team with code:", teamCode);
-      setTeamCode("");
-      // TODO: Implement team joining logic
-    }
-  };
+  // Use Redux teams if available, otherwise fall back to mock data
+  const displayTeams = teams.length > 0 ? teams : mockTeams;
 
   return (
     <div className="h-screen flex flex-col bg-white">
@@ -126,45 +168,103 @@ export default function Teams() {
         <main className="flex-1 overflow-y-auto p-6">
           {/* Getting Started Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Create New Team Card */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            {/* Create New Team Card - Enhanced with Redux and Zod */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Create New Team</h3>
-              <p className="text-gray-600 mb-4">Start a new collaboration space for your projects.</p>
+              <p className="text-gray-600 mb-4">Start a new collaboration space for your projects. You'll be the owner of this team.</p>
               
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Team Name</label>
-                  <input
-                    type="text"
-                    value={teamName}
-                    onChange={(e) => setTeamName(e.target.value)}
-                    placeholder="E.g., Marketing Team Q3"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              <Form {...createTeamForm}>
+                <form onSubmit={createTeamForm.handleSubmit(handleCreateTeam)} className="space-y-4">
+                  <FormField
+                    control={createTeamForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-gray-700">Team Name *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="E.g., Marketing Team Q3" 
+                            {...field} 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </FormControl>
+                        {createTeamForm.formState.errors.name && (
+                          <FormMessage className="text-red-500 text-xs">
+                            {createTeamForm.formState.errors.name.message}
+                          </FormMessage>
+                        )}
+                      </FormItem>
+                    )}
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Team Description (Optional)</label>
-                  <textarea
-                    value={teamDescription}
-                    onChange={(e) => setTeamDescription(e.target.value)}
-                    placeholder="Briefly describe the team's purpose or goals."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  
+                  <FormField
+                    control={createTeamForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-gray-700">Team Description (Optional)</FormLabel>
+                        <FormControl>
+                          <textarea
+                            {...field}
+                            placeholder="Briefly describe the team's purpose or goals..."
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                          />
+                        </FormControl>
+                        {createTeamForm.formState.errors.description && (
+                          <FormMessage className="text-red-500 text-xs">
+                            {createTeamForm.formState.errors.description.message}
+                          </FormMessage>
+                        )}
+                      </FormItem>
+                    )}
                   />
-                </div>
-                
-                <button
-                  onClick={handleCreateTeam}
-                  disabled={!teamName.trim()}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Create Team
-                </button>
-              </div>
+                  
+                  <Button
+                    type="submit"
+                    disabled={!createTeamForm.formState.isValid || isCreating}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCreating ? (
+                      <div className="flex items-center justify-center">
+                        <svg
+                          className="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Creating...
+                      </div>
+                    ) : (
+                      'Create Team'
+                    )}
+                  </Button>
+
+                  {/* Error Display */}
+                  {errorMessage && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-600">{errorMessage}</p>
+                    </div>
+                  )}
+                </form>
+              </Form>
             </div>
 
-            {/* Join a Team Card */}
+            {/* Join a Team Card - Keep existing functionality */}
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Join a Team</h3>
               <p className="text-gray-600 mb-4">Enter a team code or invite link to join an existing team.</p>
@@ -195,7 +295,7 @@ export default function Teams() {
           {/* Team Details Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Team Details */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            {/* <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Team Details: Marketing Campaigns</h3>
               
               <div>
@@ -205,7 +305,7 @@ export default function Teams() {
                 <p className="text-gray-600 text-sm mb-4">Full list of all members in Marketing Campaigns.</p>
                 
                 <div className="space-y-3">
-                  {teams[0].members.map((member) => (
+                  {mockTeams[0].members.map((member) => (
                     <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-medium text-gray-700">
@@ -234,56 +334,95 @@ export default function Teams() {
                   Invite New Member
                 </button>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Your Teams Section */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Teams</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {teams.map((team) => (
-                <div key={team.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{team.name}</h4>
-                      <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full">
-                        {team.role}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-gray-600 mb-3">{team.description}</p>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <div className="flex -space-x-1">
-                        {team.id === 1 ? (
-                          <>
-                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs text-white font-medium">AJ</div>
-                            <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-xs text-white font-medium">BW</div>
-                            <div className="w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center text-xs text-white font-medium">CD</div>
-                            <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-xs text-white font-medium">+4</div>
-                          </>
-                        ) : (
-                          <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs text-gray-600 font-medium">
-                            {typeof team.members === 'number' ? team.members : team.members.length}
-                          </div>
-                        )}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <svg
+                  className="animate-spin h-8 w-8 text-blue-600"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {displayTeams.map((team, index) => (
+                  <div key={team._id || team.id || index} className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{team.name}</h4>
+                        <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full">
+                          {team.isOwner ? 'Owner' : team.role || 'Member'}
+                        </span>
                       </div>
-                      <span className="text-xs text-gray-500">
-                        {typeof team.members === 'number' ? team.members : team.members.length} members
-                      </span>
                     </div>
                     
-                    {team.id === 1 && (
-                      <button className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        Manage Team
-                      </button>
-                    )}
+                    <p className="text-sm text-gray-600 mb-3">{team?.description || "No description"}</p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <div className="flex -space-x-1">
+                          {Array.isArray(team.members) && team.members.length > 0 ? (
+                            <>
+                              {team.members.slice(0, 3).map((member, memberIndex) => (
+                                <div 
+                                  key={member._id || member.id || memberIndex} 
+                                  className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-xs text-white font-medium"
+                                >
+                                  {member.name ? member.name.charAt(0).toUpperCase() : '?'}
+                                </div>
+                              ))}
+                              {team.members.length > 3 && (
+                                <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs text-gray-600 font-medium">
+                                  +{team.members.length - 3}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs text-gray-600 font-medium">
+                              {typeof team.members === 'number' ? team.members : (Array.isArray(team.members) ? team.members.length : 0)}
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {Array.isArray(team.members) ? team.members.length : (typeof team.members === 'number' ? team.members : 0)} members
+                        </span>
+                      </div>
+                      
+                      {(team.isOwner || team.role === 'Owner') && (
+                        <button 
+                          onClick={() => navigate(`/teams/${team._id || team.id}/manage`, { 
+                            state: { team: team } 
+                          })}
+                          className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          Manage Team
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </main>
       </div>
