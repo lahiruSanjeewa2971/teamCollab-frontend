@@ -111,11 +111,12 @@ const authSlice = createSlice({
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
         state.alertMessage = null;
+        state.isAuthenticated = false;
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload.user;
-        state.isAuthenticated = true;
+        state.user = null; // Don't store user until they login and get tokens
+        state.isAuthenticated = false; // User needs to login to get tokens
         state.alertMessage = action.payload.message;
       })
       .addCase(registerUser.rejected, (state) => {

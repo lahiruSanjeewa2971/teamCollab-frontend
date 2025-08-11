@@ -7,28 +7,41 @@ import Dashboard from "../pages/Dashboard";
 import Teams from "../pages/Teams";
 
 export default function AppRouter() {
-  const { isAuthenticated } = useSelector(state => state.auth);
-
-
+  const { isAuthenticated } = useSelector((state) => state.auth);
 
   return (
     <BrowserRouter>
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login/>
-        } />
-        <Route path="/register" element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register/>
-        } />
+        <Route
+          path="/"
+          element={
+            // isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login/>
+            <Login />
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Register />
+            )
+          }
+        />
 
         {/* Protected routes */}
-        <Route path="/dashboard" element={
-          isAuthenticated ? <Dashboard /> : <Navigate to="/" replace />
-        } />
-        <Route path="/teams" element={
-          isAuthenticated ? <Teams /> : <Navigate to="/" replace />
-        } />
+        <Route
+          path="/dashboard"
+          element={
+            isAuthenticated ? <Dashboard /> : <Navigate to="/" replace />
+          }
+        />
+        <Route
+          path="/teams"
+          element={isAuthenticated ? <Teams /> : <Navigate to="/" replace />}
+        />
       </Routes>
     </BrowserRouter>
   );
