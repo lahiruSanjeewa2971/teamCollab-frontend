@@ -1,12 +1,13 @@
 import React from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
+import Dashboard from "../pages/Dashboard";
+import Teams from "../pages/Teams";
 
 export default function AppRouter() {
-  const dispatch = useDispatch();
-  const {isAuthenticated, isLoading} = useSelector(state => state.auth);
+  const { isAuthenticated } = useSelector(state => state.auth);
 
 
 
@@ -15,15 +16,19 @@ export default function AppRouter() {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={
-            // isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login/>
-            <Login/>
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login/>
         } />
         <Route path="/register" element={
-            // isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login/>
-            <Register/>
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register/>
         } />
 
         {/* Protected routes */}
+        <Route path="/dashboard" element={
+          isAuthenticated ? <Dashboard /> : <Navigate to="/" replace />
+        } />
+        <Route path="/teams" element={
+          isAuthenticated ? <Teams /> : <Navigate to="/" replace />
+        } />
       </Routes>
     </BrowserRouter>
   );

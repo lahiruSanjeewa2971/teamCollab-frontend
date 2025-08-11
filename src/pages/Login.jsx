@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {z} from 'zod';
 import { clearError } from "../redux/slices/errorSlice";
 import { loginUser } from "../redux/slices/authSlice";
@@ -15,6 +15,7 @@ const loginSchema = z.object({
 
 function Login() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const isLoading = useSelector((state) => state.auth.isLoading);
   const errorMessage = useSelector((state) => state.error.message);
@@ -27,7 +28,10 @@ function Login() {
   const onSubmit = async (data) => {
     dispatch(clearError());
     console.log('onSubmit:', data)
-    dispatch(loginUser(data));
+    const resultAction = await dispatch(loginUser(data));
+    if (loginUser.fulfilled.match(resultAction)) {
+      navigate('/dashboard');
+    }
   }
 
   return (
