@@ -7,17 +7,76 @@ import { toast } from "react-toastify";
 import { createTeamAsync, getTeamsAsync, clearTeamError } from "../redux/slices/teamSlice";
 import { clearError } from "../redux/slices/errorSlice";
 import { createTeamSchema } from "../lib/teamSchemas";
+import { isTeamOwner, getTeamMemberCount, getMemberName, getMemberInitials } from "../utils/safeAccess";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import TopBar from "../components/TopBar";
 import Footer from "../components/Footer";
+import TeamSearch from "../components/TeamSearch";
 
 export default function Teams() {
+  // Add custom scrollbar styles
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      .scroll-smooth {
+        scroll-behavior: smooth;
+      }
+      .teams-container {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 #f1f5f9;
+        will-change: scroll-position;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+      }
+      .teams-container::-webkit-scrollbar {
+        width: 8px;
+      }
+      .teams-container::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+      }
+      .teams-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      .teams-container::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      .line-clamp-3 {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
   const dispatch = useDispatch();
   const { teams, isLoading, isCreating } = useSelector((state) => state.team);
+  const { user } = useSelector((state) => state.auth);
   const errorMessage = useSelector((state) => state.error.message);
-  const [teamCode, setTeamCode] = useState("");
   const navigate = useNavigate();
 
   // Team creation form
@@ -34,6 +93,26 @@ export default function Teams() {
   useEffect(() => {
     dispatch(getTeamsAsync());
   }, [dispatch]);
+
+  // Log teams for debugging
+  useEffect(() => {
+    console.log('Teams updated:', teams);
+  }, [teams]);
+
+  // Improve scroll performance
+  useEffect(() => {
+    const mainContent = document.querySelector('.teams-container');
+    if (mainContent) {
+      // Enable smooth scrolling
+      mainContent.style.scrollBehavior = 'smooth';
+      
+      // Improve scroll performance on mobile
+      mainContent.style.webkitOverflowScrolling = 'touch';
+      
+      // Prevent scroll chaining
+      mainContent.style.overscrollBehavior = 'contain';
+    }
+  }, []);
 
   // Handle team creation
   const handleCreateTeam = async (data) => {
@@ -55,68 +134,21 @@ export default function Teams() {
     }
   };
 
-  const handleJoinTeam = () => {
-    if (teamCode.trim()) {
-      console.log("Joining team with code:", teamCode);
-      setTeamCode("");
-      // TODO: Implement team joining logic
-    }
-  };
 
-  // Mock teams data for display (will be replaced by Redux state)
-  const mockTeams = [
-    {
-      id: 1,
-      name: "Marketing Campaigns",
-      role: "Owner",
-      description: "Collaborate on marketing strategies and campaign execution",
-      members: [
-        { id: 1, name: "Alice Johnson", email: "alice@teamcollab.com", role: "Owner", avatar: "AJ" },
-        { id: 2, name: "Bob Williams", email: "bob@teamcollab.com", role: "Editor", avatar: "BW" },
-        { id: 3, name: "Charlie Davis", email: "charlie@teamcollab.com", role: "Member", avatar: "CD" },
-        { id: 4, name: "Diana Green", email: "diana@teamcollab.com", role: "Member", avatar: "DG" },
-        { id: 5, name: "Evan Taylor", email: "evan@teamcollab.com", role: "Member", avatar: "ET" },
-        { id: 6, name: "Fiona White", email: "fiona@teamcollab.com", role: "Guest", avatar: "FW" },
-        { id: 7, name: "Greg Harris", email: "greg@teamcollab.com", role: "Member", avatar: "GH" },
-      ]
-    },
-    {
-      id: 2,
-      name: "Product Development",
-      role: "Member",
-      description: "Build and iterate on product features and improvements",
-      members: 12
-    },
-    {
-      id: 3,
-      name: "Customer Success",
-      role: "Guest",
-      description: "Ensure customer satisfaction and support",
-      members: 5
-    },
-    {
-      id: 4,
-      name: "Human Resources",
-      role: "Member",
-      description: "Manage team culture and organizational development",
-      members: 4
-    }
-  ];
 
-  // Use Redux teams if available, otherwise fall back to mock data
-  const displayTeams = teams.length > 0 ? teams : mockTeams;
+  // No mock teams needed - we're using real backend data
+  const displayTeams = teams;
 
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-white overflow-hidden">
       <TopBar 
-        searchPlaceholder="Search teams or members..."
         showLogoLink={true}
         logoLinkTo="/dashboard"
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0">
         {/* Left Sidebar */}
-        <aside className="w-64 h-full border-r px-3 py-3 overflow-y-auto hidden lg:block">
+        <aside className="w-64 flex-shrink-0 border-r px-3 py-3 overflow-y-auto hidden lg:block custom-scrollbar">
           <div className="mb-4">
             <button className="w-full flex items-center justify-between border rounded-md px-3 py-2 text-sm">
               <span className="truncate">Projects</span>
@@ -165,7 +197,7 @@ export default function Teams() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-6 scroll-smooth relative custom-scrollbar teams-container">
           {/* Getting Started Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Create New Team Card - Enhanced with Redux and Zod */}
@@ -183,6 +215,7 @@ export default function Teams() {
                         <FormLabel className="text-sm font-medium text-gray-700">Team Name *</FormLabel>
                         <FormControl>
                           <Input 
+                            id="team-name"
                             placeholder="E.g., Marketing Team Q3" 
                             {...field} 
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -264,31 +297,12 @@ export default function Teams() {
               </Form>
             </div>
 
-            {/* Join a Team Card - Keep existing functionality */}
+            {/* Search & Join Teams Card */}
             <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Join a Team</h3>
-              <p className="text-gray-600 mb-4">Enter a team code or invite link to join an existing team.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Search & Join Teams</h3>
+              <p className="text-gray-600 mb-4">Search for teams by name to join them.</p>
               
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Team Code or Invite Link</label>
-                  <input
-                    type="text"
-                    value={teamCode}
-                    onChange={(e) => setTeamCode(e.target.value)}
-                    placeholder="Enter code or paste link"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <button
-                  onClick={handleJoinTeam}
-                  disabled={!teamCode.trim()}
-                  className="w-full bg-white text-blue-600 border border-blue-600 py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Join Team
-                </button>
-              </div>
+              <TeamSearch />
             </div>
           </div>
 
@@ -363,57 +377,103 @@ export default function Teams() {
                   ></path>
                 </svg>
               </div>
+            ) : displayTeams.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No teams yet</h3>
+                <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                  You haven't joined or created any teams yet. Create your first team to start collaborating with others, or join an existing team to get started.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button 
+                    onClick={() => document.getElementById('team-name')?.focus()}
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Create Your First Team
+                  </button>
+                                     <button 
+                     onClick={() => document.getElementById('team-search-input')?.focus()}
+                     className="inline-flex items-center px-4 py-2 bg-white text-blue-600 border border-blue-600 text-sm font-medium rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                   >
+                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                     </svg>
+                     Search Teams
+                   </button>
+                </div>
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {displayTeams.map((team, index) => (
-                  <div key={team._id || team.id || index} className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-medium text-gray-900">{team.name}</h4>
-                        <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full">
-                          {team.isOwner ? 'Owner' : team.role || 'Member'}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                {displayTeams.filter(team => team && team._id).map((team, index) => (
+                  <div key={team._id || team.id || index} className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col h-64">
+                    {/* Header Section */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 text-lg mb-2">{team.name || 'Unnamed Team'}</h4>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          isTeamOwner(team, user) 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {isTeamOwner(team, user) ? 'Owner' : 'Member'}
                         </span>
                       </div>
                     </div>
                     
-                    <p className="text-sm text-gray-600 mb-3">{team?.description || "No description"}</p>
+                    {/* Description Section - Fixed Height */}
+                    <div className="flex-1 mb-4">
+                      <p className="text-sm text-gray-600 line-clamp-3 h-16 overflow-hidden">
+                        {team?.description || "No description provided for this team."}
+                      </p>
+                    </div>
                     
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        <div className="flex -space-x-1">
-                          {Array.isArray(team.members) && team.members.length > 0 ? (
-                            <>
-                              {team.members.slice(0, 3).map((member, memberIndex) => (
-                                <div 
-                                  key={member._id || member.id || memberIndex} 
-                                  className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-xs text-white font-medium"
-                                >
-                                  {member.name ? member.name.charAt(0).toUpperCase() : '?'}
-                                </div>
-                              ))}
-                              {team.members.length > 3 && (
-                                <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs text-gray-600 font-medium">
-                                  +{team.members.length - 3}
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                            <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs text-gray-600 font-medium">
-                              {typeof team.members === 'number' ? team.members : (Array.isArray(team.members) ? team.members.length : 0)}
-                            </div>
-                          )}
+                    {/* Footer Section - Always at Bottom */}
+                    <div className="mt-auto">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex -space-x-1">
+                            {Array.isArray(team.members) && team.members.length > 0 ? (
+                              <>
+                                {team.members.slice(0, 3).map((member, memberIndex) => (
+                                  <div 
+                                    key={member._id || member.id || memberIndex} 
+                                    className="w-7 h-7 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-xs text-white font-medium border-2 border-white shadow-sm"
+                                  >
+                                    {getMemberInitials(member)}
+                                  </div>
+                                ))}
+                                {team.members.length > 3 && (
+                                  <div className="w-7 h-7 bg-gray-300 rounded-full flex items-center justify-center text-xs text-gray-600 font-medium border-2 border-white shadow-sm">
+                                    +{team.members.length - 3}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="w-7 h-7 bg-gray-300 rounded-full flex items-center justify-center text-xs text-gray-600 font-medium border-2 border-white shadow-sm">
+                                {typeof team.members === 'number' ? team.members : (Array.isArray(team.members) ? team.members.length : 0)}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-sm text-gray-500 font-medium">
+                            {getTeamMemberCount(team)} member{getTeamMemberCount(team) !== 1 ? 's' : ''}
+                          </span>
                         </div>
-                        <span className="text-xs text-gray-500">
-                          {Array.isArray(team.members) ? team.members.length : (typeof team.members === 'number' ? team.members : 0)} members
-                        </span>
                       </div>
                       
-                      {(team.isOwner || team.role === 'Owner') && (
+                      {/* Action Button - Always at Bottom */}
+                      {isTeamOwner(team, user) && (
                         <button 
                           onClick={() => navigate(`/teams/${team._id || team.id}/manage`, { 
                             state: { team: team } 
                           })}
-                          className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 font-medium"
                         >
                           Manage Team
                         </button>
@@ -426,6 +486,22 @@ export default function Teams() {
           </div>
         </main>
       </div>
+
+      {/* Scroll to Top Button */}
+      <button
+        onClick={() => {
+          const mainContent = document.querySelector('.teams-container');
+          if (mainContent) {
+            mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }}
+        className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-50"
+        title="Scroll to top"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+      </button>
 
       {/* Footer */}
       <Footer />

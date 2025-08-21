@@ -114,7 +114,7 @@ export default function TopBar({
               {user.name || user.email}
             </span>
             <svg 
-              className={`w-4 h-4 transition-transform transition-colors ${showUserMenu ? 'rotate-180' : ''} ${
+              className={`w-4 h-4 transition-all duration-200 ${showUserMenu ? 'rotate-180' : ''} ${
                 isDarkMode ? 'text-gray-400' : 'text-gray-500'
               }`} 
               viewBox="0 0 20 20" 

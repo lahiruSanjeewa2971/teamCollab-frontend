@@ -77,6 +77,30 @@ export const removeMemberFromTeam = async (teamId, memberId) => {
   }
 };
 
+// Search teams by name
+export const searchTeams = async (query) => {
+  try {
+    const response = await axiosInstance.get('/api/team/search', {
+      params: { query }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error searching teams:', error);
+    throw error;
+  }
+};
+
+// Join a team
+export const joinTeam = async (teamId) => {
+  try {
+    const response = await axiosInstance.post(`/api/team/${teamId}/join`);
+    return response.data;
+  } catch (error) {
+    console.error('Error joining team:', error);
+    throw error;
+  }
+};
+
 // Search users
 export const searchUsers = async (query, page = 1, limit = 10) => {
   try {
