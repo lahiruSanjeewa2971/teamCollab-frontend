@@ -5,6 +5,7 @@ import { ToastContainer } from 'react-toastify'
 import { useEffect } from 'react'
 import tokenExpirationService from './services/tokenExpirationService'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { SocketProvider } from './contexts/SocketContext'
 
 function AppContent() {
   useEffect(() => {
@@ -29,7 +30,9 @@ function App() {
   return (
     <Provider store={store}>
       <ThemeProvider>
-        <AppContent />
+        <SocketProvider>
+          <AppContent />
+        </SocketProvider>
       </ThemeProvider>
     </Provider>
   )

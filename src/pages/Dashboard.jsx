@@ -1,20 +1,16 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import Footer from "../components/Footer";
+import Notifications from "../components/Notifications";
+import SocketStatus from "../components/SocketStatus";
+import { useSocket } from "../contexts/SocketContext";
 
 export default function Dashboard() {
-  const organizationName = "Acme Inc.";
-  const navigationItems = [
-    { key: "dashboard", label: "Dashboard", active: true },
-    { key: "teams", label: "Teams" },
-    { key: "my-team", label: "My Team" },
-    { key: "campaign", label: "Campaign Team" },
-    { key: "design", label: "Design Team" },
-    { key: "dev", label: "Development" },
-    { key: "profile", label: "Profile" },
-    { key: "settings", label: "Settings" },
-  ];
+  // Get socket status from context (no initialization needed)
+  const { isConnected } = useSocket();
 
+  const organizationName = "Acme Inc.";
   const channels = [
     { id: "general", name: "general", unread: false, active: true },
     { id: "design-sprint", name: "design-sprint", unread: true },
@@ -39,16 +35,6 @@ export default function Dashboard() {
     { id: 6, name: "Evan Taylor", color: "bg-indigo-500" },
     { id: 7, name: "Fiona White", color: "bg-red-500" },
     { id: 8, name: "Greg Harris", color: "bg-teal-500" },
-  ];
-
-  const notifications = [
-    { id: 1, title: "Alice Johnson mentioned you in #design-sprint.", time: "5 minutes ago" },
-    { id: 2, title: "New file 'Project Brief.pdf' uploaded to #general.", time: "15 minutes ago" },
-    { id: 3, title: "Bob Williams accepted your invitation to 'Sales Team'.", time: "1 hour ago" },
-    { id: 4, title: "Upcoming meeting: Q3 Review at 2:00 PM today.", time: "Today" },
-    { id: 5, title: "System update completed. New features available!", time: "Yesterday" },
-    { id: 6, title: "New message from David Lee in direct messages.", time: "Yesterday" },
-    { id: 7, title: "Task 'Prepare Presentation' marked as complete.", time: "2 days ago" },
   ];
 
   const messages = [
@@ -105,50 +91,50 @@ export default function Dashboard() {
     <div className="h-screen flex flex-col bg-white">
       <TopBar />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
-        <aside className="w-64 h-full border-r px-3 py-3 overflow-y-auto hidden lg:block">
-          <div className="mb-4">
-            <button className="w-full flex items-center justify-between border rounded-md px-3 py-2 text-sm">
-              <span className="truncate">{organizationName}</span>
-              {/* Commented out for now until we decide this to implement for few organizations */}
-              {/* <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.064l3.71-3.834a.75.75 0 111.08 1.04l-4.24 4.384a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-              </svg> */}
-            </button>
+        <aside className="w-64 h-full border-r bg-gray-50 overflow-y-auto">
+          {/* Organization Header */}
+          <div className="p-4 border-b bg-white">
+            <h1 className="text-lg font-semibold text-gray-800">{organizationName}</h1>
           </div>
 
-          <nav className="space-y-1">
-            {navigationItems.map((item) => (
-              <a
-                key={item.key}
-                href={item.key === "teams" ? "/teams" : "#"}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                  item.active
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                {item.label}
-              </a>
-            ))}
+          {/* Navigation */}
+          <nav className="p-4">
+            <ul className="space-y-1">
+              <li>
+                <Link
+                  to="/teams"
+                  className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                >
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  Teams
+                </Link>
+              </li>
+            </ul>
           </nav>
 
-          <div className="mt-6">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Channels</h3>
+          {/* Channels */}
+          <div className="px-4 pb-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-gray-700">Channels</h3>
+              <button className="text-xs text-blue-600 hover:underline">+</button>
+            </div>
             <ul className="space-y-1">
               {channels.map((channel) => (
                 <li key={channel.id}>
                   <a
                     href="#"
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                      channel.active ? "bg-gray-200 text-gray-900" : "text-gray-700 hover:bg-gray-100"
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors duration-200 ${
+                      channel.active
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     <span className="text-gray-400">#</span>
                     <span className="truncate">{channel.name}</span>
                     {channel.unread && (
-                      <span className="ml-auto inline-block w-2 h-2 rounded-full bg-blue-500"></span>
+                      <span className="ml-auto w-2 h-2 bg-red-500 rounded-full"></span>
                     )}
                   </a>
                 </li>
@@ -156,8 +142,12 @@ export default function Dashboard() {
             </ul>
           </div>
 
-          <div className="mt-6">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Direct Messages</h3>
+          {/* Direct Messages */}
+          <div className="px-4 pb-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-gray-700">Direct Messages</h3>
+              <button className="text-xs text-blue-600 hover:underline">+</button>
+            </div>
             <ul className="space-y-1">
               {directMessages.map((dm) => (
                 <li key={dm.id}>
@@ -247,35 +237,21 @@ export default function Dashboard() {
             </ul>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-700">Notifications</h3>
-              <button className="text-xs text-blue-600 hover:underline">Mark all as read</button>
-            </div>
-            <ul className="space-y-3">
-              {notifications.map((n) => (
-                <li key={n.id} className="border rounded-md p-3 hover:bg-gray-50">
-                  <div className="flex items-start gap-2">
-                    <span className="mt-0.5 text-orange-500">
-                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z" />
-                        <path d="M7 15a3 3 0 006 0H7z" />
-                      </svg>
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm text-gray-800 leading-5">{n.title}</p>
-                      <p className="text-xs text-gray-500 mt-1">{n.time}</p>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+          {/* Real-time Notifications */}
+          <Notifications />
+          
+          {/* Socket Connection Status (for debugging) */}
+          <div className="mt-4 p-2 bg-gray-50 rounded text-xs text-gray-500">
+            Socket: {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
           </div>
         </aside>
       </div>
 
       {/* Footer */}
       <Footer />
+      
+      {/* Socket Status Debug Component */}
+      <SocketStatus />
     </div>
   );
 }

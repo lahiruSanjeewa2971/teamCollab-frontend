@@ -14,6 +14,8 @@ import { Button } from "../components/ui/button";
 import TopBar from "../components/TopBar";
 import Footer from "../components/Footer";
 import TeamSearch from "../components/TeamSearch";
+import SocketStatus from "../components/SocketStatus";
+import { useTeamSocket } from "../hooks/useTeamSocket";
 
 export default function Teams() {
   // Add custom scrollbar styles
@@ -94,11 +96,9 @@ export default function Teams() {
     dispatch(getTeamsAsync());
   }, [dispatch]);
 
-  // Log teams for debugging
-  useEffect(() => {
-    console.log('Teams updated:', teams);
-  }, [teams]);
-
+  // Initialize Socket.IO for real-time team updates
+  const { isConnected } = useTeamSocket();
+  
   // Improve scroll performance
   useEffect(() => {
     const mainContent = document.querySelector('.teams-container');
@@ -116,7 +116,6 @@ export default function Teams() {
 
   // Handle team creation
   const handleCreateTeam = async (data) => {
-    console.log("Creating team:", data);
     
     try {
       const resultAction = await dispatch(createTeamAsync(data));
@@ -297,13 +296,15 @@ export default function Teams() {
               </Form>
             </div>
 
-            {/* Search & Join Teams Card */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Search & Join Teams</h3>
-              <p className="text-gray-600 mb-4">Search for teams by name to join them.</p>
-              
-              <TeamSearch />
-            </div>
+                         {/* Search & Join Teams Card */}
+             <div className="bg-white border border-gray-200 rounded-lg p-6">
+               <h3 className="text-lg font-semibold text-gray-900 mb-2">Search & Join Teams</h3>
+               <p className="text-gray-600 mb-4">Search for teams by name to join them.</p>
+               
+               <TeamSearch />
+               
+               
+             </div>
           </div>
 
           {/* Team Details Section */}
@@ -505,6 +506,9 @@ export default function Teams() {
 
       {/* Footer */}
       <Footer />
+      
+      {/* Socket Status Debug Component */}
+      <SocketStatus />
     </div>
   );
 }

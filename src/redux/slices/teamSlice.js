@@ -228,6 +228,11 @@ const teamSlice = createSlice({
     clearSearchResults: (state) => {
       state.searchResults = [];
     },
+    // Remove team when user is kicked out
+    removeTeamFromList: (state, action) => {
+      const teamId = action.payload;
+      state.teams = state.teams.filter(team => team._id !== teamId);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -367,7 +372,7 @@ const teamSlice = createSlice({
   }
 });
 
-export const { clearTeamError, clearSearchResults } = teamSlice.actions;
+export const { clearTeamError, clearSearchResults, removeTeamFromList } = teamSlice.actions;
 export default teamSlice.reducer;
 
 // Export all async thunks for use in components

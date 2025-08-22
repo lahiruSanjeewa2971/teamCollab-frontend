@@ -4,11 +4,8 @@ import { refreshToken } from './authService';
 import { store } from '../redux/store';
 import { clearAuth } from '../redux/slices/authSlice';
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 // Create axios instance
 const axiosInstance = axios.create({
-  baseURL: API_URL,
   timeout: 10000,
 });
 

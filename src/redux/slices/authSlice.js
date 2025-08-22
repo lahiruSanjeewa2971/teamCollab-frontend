@@ -2,6 +2,7 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { login, register, refreshToken, logout } from "../../api/authService";
 import { setError } from "./errorSlice";
 import { isTokenExpired, needsRefresh } from "../../utils/tokenUtils";
+import socketService from "../../services/socketService";
 
 const initialState = {
   user: (() => {
@@ -86,16 +87,25 @@ export const refreshUserToken = createAsyncThunk("auth/refreshUserToken", async 
   }
 });
 
-export const logoutUser = createAsyncThunk("auth/logoutUser", async (_, { getState, rejectWithValue }) => {
+export const logoutUser = createAsyncThunk("auth/logoutUser", async (_, { getState, rejectWithValue, dispatch }) => {
   try {
     const { refreshToken: refreshTokenValue } = getState().auth;
+    
+    // Clean up socket connection first
+    if (socketService) {
+      socketService.forceCleanup();
+    }
+    
+    // Then logout from backend
     if (refreshTokenValue) {
       await logout(refreshTokenValue);
     }
+    
+    // Even if logout fails on backend, we should still clear local state
     return { success: true };
   } catch (error) {
-    console.error('Error logging out:', error);
-    // Even if logout fails on backend, we should still clear local state
+    console.error("Logout error:", error);
+    // Even if logout fails, clear local state
     return { success: true };
   }
 });
@@ -116,6 +126,11 @@ const authSlice = createSlice({
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+    },
+    clearAllState: () => {
+      // This will be handled by the root reducer
+      // Return undefined to reset the entire state
+      return undefined;
     },
     setLoading: (state, action) => {
       state.isLoading = action.payload;

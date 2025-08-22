@@ -470,7 +470,8 @@ export default function TeamManage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        {/* Team Actions section hidden for now */}
+        {/* <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Team Actions</h2>
           
           <button
@@ -479,7 +480,7 @@ export default function TeamManage() {
           >
             Delete Team
           </button>
-        </div>
+        </div> */}
       </main>
 
       {/* Remove Member Alert Dialog */}
