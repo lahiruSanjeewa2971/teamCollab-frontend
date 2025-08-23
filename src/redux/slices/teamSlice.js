@@ -45,7 +45,9 @@ const getTeamsAsync = createAsyncThunk(
   "team/getTeams",
   async (_, { rejectWithValue, dispatch }) => {
     try {
+      console.log('getTeamsAsync: Starting to fetch teams...');
       const response = await getTeams();
+      console.log('getTeamsAsync: Response received:', response);
       return response;
     } catch (error) {
       console.log('Error in getting teams:', error);
@@ -256,6 +258,7 @@ const teamSlice = createSlice({
       })
       .addCase(getTeamsAsync.fulfilled, (state, action) => {
         state.isLoading = false;
+        console.log('getTeamsAsync.fulfilled: Payload received:', action.payload);
         // Ensure we only store valid teams with required properties
         state.teams = (action.payload.teams || []).filter(team => 
           team && 
@@ -264,9 +267,11 @@ const teamSlice = createSlice({
           team.owner && 
           Array.isArray(team.members)
         );
+        console.log('getTeamsAsync.fulfilled: Filtered teams stored:', state.teams);
       })
       .addCase(getTeamsAsync.rejected, (state) => {
         state.isLoading = false;
+        console.log('getTeamsAsync.rejected: Error occurred');
       })
       // Update team cases
       .addCase(updateTeamAsync.pending, (state) => {
@@ -374,6 +379,13 @@ const teamSlice = createSlice({
 
 export const { clearTeamError, clearSearchResults, removeTeamFromList } = teamSlice.actions;
 export default teamSlice.reducer;
+
+// Selectors
+export const selectTeams = (state) => state.team.teams;
+export const selectTeamsLoading = (state) => state.team.isLoading;
+export const selectTeamsError = (state) => state.team.error;
+export const selectSearchResults = (state) => state.team.searchResults;
+export const selectIsSearching = (state) => state.team.isSearching;
 
 // Export all async thunks for use in components
 export {

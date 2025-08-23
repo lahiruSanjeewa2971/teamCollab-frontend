@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { handleChannelCreated, handleChannelUpdated, handleChannelDeleted } from '../socket/handlers/channelHandlers.js';
 
 /**
  * Simple Socket.IO Service - KISS Principle
@@ -105,6 +106,11 @@ class SocketService {
       this.isConnected = false;
       this.userId = null;
     });
+
+    // Channel event handlers
+    this.socket.on('channel:created', handleChannelCreated);
+    this.socket.on('channel:updated', handleChannelUpdated);
+    this.socket.on('channel:deleted', handleChannelDeleted);
   }
 
   _attemptReconnection(userId) {
@@ -141,6 +147,21 @@ class SocketService {
 
   getCurrentUserId() {
     return this.userId;
+  }
+
+  // Team room management
+  joinTeamRoom(teamId) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('join-team-room', teamId);
+      console.log(`✅ Joined team room: ${teamId}`);
+    }
+  }
+
+  leaveTeamRoom(teamId) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('leave-team-room', teamId);
+      console.log(`✅ Left team room: ${teamId}`);
+    }
   }
 
   cleanup() {

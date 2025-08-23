@@ -5,6 +5,7 @@ import { removeTeamFromList } from '../redux/slices/teamSlice';
 import { addNotification } from '../redux/slices/notificationSlice';
 import socketService from '../services/socketService';
 import { fetchUserNotifications } from '../redux/slices/notificationSlice';
+import { handleChannelCreated, handleChannelUpdated, handleChannelDeleted } from '../socket/handlers/channelHandlers.js';
 
 const SocketContext = createContext();
 
@@ -107,13 +108,23 @@ export const SocketProvider = ({ children }) => {
       dispatch(removeTeamFromList(teamId));
     };
 
-    // Register the global event listener
+    // Register the global event listeners
     const socket = socketService.socket;
+    
+    // Team events
     socket.on('user:removed-from-team', handleUserRemovedFromTeam);
+    
+    // Channel events
+    socket.on('channel:created', handleChannelCreated);
+    socket.on('channel:updated', handleChannelUpdated);
+    socket.on('channel:deleted', handleChannelDeleted);
     
     // Cleanup function
     return () => {
       socket.off('user:removed-from-team', handleUserRemovedFromTeam);
+      socket.off('channel:created', handleChannelCreated);
+      socket.off('channel:updated', handleChannelUpdated);
+      socket.off('channel:deleted', handleChannelDeleted);
     };
   }, [isConnected, userId, socketService, dispatch]);
 

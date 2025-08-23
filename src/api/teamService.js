@@ -3,10 +3,13 @@ import axiosInstance from './axiosConfig';
 // Get all teams
 export const getTeams = async () => {
   try {
+    console.log('teamService: Making API call to /api/team');
     const response = await axiosInstance.get('/api/team');
+    console.log('teamService: API response received:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching teams:', error);
+    console.error('Error details:', error.response?.data || error.message);
     throw error;
   }
 };

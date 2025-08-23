@@ -3,6 +3,7 @@ import authReducer from "./slices/authSlice";
 import errorReducer from "./slices/errorSlice";
 import teamReducer from "./slices/teamSlice";
 import notificationReducer from "./slices/notificationSlice";
+import channelsReducer from "./slices/channelsSlice";
 
 // Root reducer with clear all functionality
 const appReducer = combineReducers({
@@ -10,6 +11,7 @@ const appReducer = combineReducers({
   error: errorReducer,
   team: teamReducer,
   notification: notificationReducer,
+  channels: channelsReducer,
 });
 
 // Root reducer that clears all state on logout

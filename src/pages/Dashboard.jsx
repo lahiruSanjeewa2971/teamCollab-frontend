@@ -5,20 +5,13 @@ import Footer from "../components/Footer";
 import Notifications from "../components/Notifications";
 import SocketStatus from "../components/SocketStatus";
 import { useSocket } from "../contexts/SocketContext";
+import ChannelsSection from "../components/sidebar/ChannelsSection.jsx";
 
 export default function Dashboard() {
   // Get socket status from context (no initialization needed)
   const { isConnected } = useSocket();
 
   const organizationName = "Acme Inc.";
-  const channels = [
-    { id: "general", name: "general", unread: false, active: true },
-    { id: "design-sprint", name: "design-sprint", unread: true },
-    { id: "marketing", name: "marketing" },
-    { id: "development", name: "development" },
-    { id: "random", name: "random" },
-    { id: "client-meetings", name: "client-meetings" },
-  ];
 
   const directMessages = [
     { id: 1, name: "David Lee" },
@@ -115,32 +108,7 @@ export default function Dashboard() {
           </nav>
 
           {/* Channels */}
-          <div className="px-4 pb-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-700">Channels</h3>
-              <button className="text-xs text-blue-600 hover:underline">+</button>
-            </div>
-            <ul className="space-y-1">
-              {channels.map((channel) => (
-                <li key={channel.id}>
-                  <a
-                    href="#"
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors duration-200 ${
-                      channel.active
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <span className="text-gray-400">#</span>
-                    <span className="truncate">{channel.name}</span>
-                    {channel.unread && (
-                      <span className="ml-auto w-2 h-2 bg-red-500 rounded-full"></span>
-                    )}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ChannelsSection />
 
           {/* Direct Messages */}
           <div className="px-4 pb-4">

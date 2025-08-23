@@ -6,6 +6,7 @@ import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import Teams from "../pages/Teams";
 import TeamManage from "../pages/TeamManage";
+import Channels from "../pages/Channels";
 
 export default function AppRouter() {
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -46,6 +47,10 @@ export default function AppRouter() {
         <Route
           path="/teams/:teamId/manage"
           element={isAuthenticated ? <TeamManage /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/channels"
+          element={isAuthenticated ? <Channels /> : <Navigate to="/" replace />}
         />
       </Routes>
     </BrowserRouter>

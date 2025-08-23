@@ -90,6 +90,8 @@ axiosInstance.interceptors.request.use(
     
     // Token is valid, add to request
     config.headers.Authorization = `Bearer ${token}`;
+    console.log('axios: Adding token to request:', token.substring(0, 20) + '...');
+    console.log('axios: Request URL:', config.url);
     return config;
   },
   (error) => {

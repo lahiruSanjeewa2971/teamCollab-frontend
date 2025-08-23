@@ -175,9 +175,12 @@ export default function Teams() {
               <div className="flex items-center gap-2 px-3 py-2 rounded-md text-sm bg-blue-600 text-white">
                 Team
               </div>
-              <a href="#" className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-100">
-                Templates
-              </a>
+              <Link 
+                to="/channels" 
+                className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Channels
+              </Link>
               <a href="#" className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-100">
                 Help
               </a>
