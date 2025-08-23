@@ -490,9 +490,9 @@ TeamCollab is a React-based team collaboration application with authentication, 
     - Add channel permissions and settings
 
 11. **🚀 Mobile Responsiveness**
-    - Optimize layout for mobile devices
+   - Optimize layout for mobile devices
     - Implement mobile navigation patterns
-    - Add touch-friendly interactions
+   - Add touch-friendly interactions
 
 ---
 

@@ -63,15 +63,49 @@ export const isTeamOwner = (team, user) => {
  * @returns {string} Member name or 'Unknown'
  */
 export const getMemberName = (member) => {
-  return safeGet(member, 'name', 'Unknown');
+  if (!member) return 'Unknown';
+  
+  // Try to get the name property
+  const name = safeGet(member, 'name', null);
+  
+  // If name exists and is not empty, return it
+  if (name && typeof name === 'string' && name.trim() !== '') {
+    return name.trim();
+  }
+  
+  // If no name but has email, return email
+  if (member.email && typeof member.email === 'string') {
+    return member.email;
+  }
+  
+  return 'Unknown';
 };
 
 /**
  * Safely get member initials
- * @param {Object} member - The member object
+ * @param {Object} member - The member object or user ID
  * @returns {string} Member initials or '?'
  */
 export const getMemberInitials = (member) => {
+  // If member is just an ID (string), return '?'
+  if (typeof member === 'string') return '?';
+  
+  // If member is null or undefined, return '?'
+  if (!member) return '?';
+  
+  // If member is an object with name property
   const name = getMemberName(member);
-  return name !== 'Unknown' ? name.charAt(0).toUpperCase() : '?';
+  
+  // If we have a valid name, return the first character
+  if (name && name !== 'Unknown') {
+    return name.charAt(0).toUpperCase();
+  }
+  
+  // If member has email but no name, use first letter of email
+  if (member.email) {
+    return member.email.charAt(0).toUpperCase();
+  }
+  
+  // Fallback to '?'
+  return '?';
 };
