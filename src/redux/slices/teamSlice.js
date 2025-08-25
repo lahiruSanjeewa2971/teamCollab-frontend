@@ -387,6 +387,13 @@ export const selectTeamsError = (state) => state.team.error;
 export const selectSearchResults = (state) => state.team.searchResults;
 export const selectIsSearching = (state) => state.team.isSearching;
 
+// Select teams where the current user is the owner
+export const selectTeamsWhereUserIsOwner = (state) => {
+  const currentUserId = state.auth.user?._id;
+  if (!currentUserId) return [];
+  return state.team.teams.filter(team => team.owner._id === currentUserId);
+};
+
 // Export all async thunks for use in components
 export {
   createTeamAsync,

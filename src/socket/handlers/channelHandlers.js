@@ -1,5 +1,6 @@
 import { store } from '../../redux/store.js';
-import { addChannelToUserChannels } from '../../redux/slices/channelsSlice.js';
+import { addChannelToUserChannels, updateChannelInAvailableChannels } from '../../redux/slices/channelsSlice.js';
+import { joinChannel } from '../../redux/slices/channelsSlice.js';
 
 /**
  * Channel Socket Event Handlers
@@ -57,5 +58,28 @@ export const handleChannelDeleted = (payload) => {
     console.log('✅ Channel deleted event handled:', { teamId, channelId });
   } catch (error) {
     console.error('❌ Error handling channel:deleted event:', error);
+  }
+};
+
+/**
+ * Handle channel member joined event
+ * @param {Object} payload - Event payload
+ * @param {string} payload.teamId - Team ID
+ * @param {Object} payload.channel - Updated channel data
+ * @param {string} payload.userId - User ID who joined
+ */
+export const handleChannelMemberJoined = (payload) => {
+  try {
+    const { teamId, channel, userId } = payload;
+
+    console.log('📡 Channel member joined event received:', { teamId, channelName: channel.name, userId });
+
+    // Update the channel data in availableChannels for all users
+    // This ensures the channel shows updated member count and status
+    store.dispatch(updateChannelInAvailableChannels({ channel }));
+
+    console.log('✅ Channel member joined event handled:', { teamId, channelName: channel.name, userId });
+  } catch (error) {
+    console.error('❌ Error handling channel:member:joined event:', error);
   }
 };

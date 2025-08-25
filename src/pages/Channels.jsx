@@ -5,6 +5,7 @@ import { fetchUserChannels } from '../redux/slices/channelsSlice';
 import { selectUserChannels, selectUserChannelsLoading } from '../redux/slices/channelsSlice';
 import { selectTeams } from '../redux/slices/teamSlice';
 import { getTeamsAsync } from '../redux/slices/teamSlice';
+import { store } from '../redux/store';
 import TopBar from '../components/TopBar';
 import Footer from '../components/Footer';
 import { Button } from '../components/ui/button';
@@ -15,6 +16,9 @@ export default function Channels() {
   const channels = useSelector(selectUserChannels);
   const isLoading = useSelector(selectUserChannelsLoading);
   const teams = useSelector(selectTeams);
+  
+  // Get current user from auth state
+  const currentUser = useSelector(state => state.auth.user);
   
   // Filter state
   const [selectedTeamFilter, setSelectedTeamFilter] = useState('all');
@@ -37,10 +41,23 @@ export default function Channels() {
 
   // Helper function to check if user is admin of a channel
   const isChannelAdmin = (channel) => {
+    console.log('channel :', channel);
     if (!channel.members || !channel.members.length) return false;
+    
+    // Get current user ID from Redux state
+    const currentUser = store.getState().auth.user;
+    if (!currentUser) return false;
+    
+    // Check if current user is the channel creator
+    if (channel.createdBy._id === currentUser._id) {
+      return true;
+    }
+    
+    // Check if current user has admin role in the channel
     const userMember = channel.members.find(member => 
-      member.userId === channel.createdBy
+      member.userId === currentUser._id || member.userId._id === currentUser._id
     );
+    
     return userMember?.role === 'admin';
   };
 
@@ -56,7 +73,7 @@ export default function Channels() {
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading channels...</p>
+            <p className="text-gray-600">Loading your channels...</p>
           </div>
         </div>
         <Footer />
@@ -85,15 +102,15 @@ export default function Channels() {
             
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Channels</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Channels</h1>
                 <p className="text-gray-600 mt-2">
-                  Manage your communication channels across all teams
+                  Manage and access the channels you've joined across all teams
                 </p>
               </div>
               
               <div className="flex items-center gap-3">
                 <div className="text-right hidden sm:block">
-                  <p className="text-sm text-gray-600">Total Channels</p>
+                  <p className="text-sm text-gray-600">Joined Channels</p>
                   <p className="text-2xl font-bold text-blue-600">{filteredChannels.length}</p>
                 </div>
               </div>
@@ -150,21 +167,21 @@ export default function Channels() {
                 <Hash className="w-12 h-12 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {selectedTeamFilter === 'all' ? 'No channels yet' : 'No channels in this team'}
+                {selectedTeamFilter === 'all' ? 'No channels joined yet' : 'No channels in this team'}
               </h3>
               <p className="text-gray-600 mb-6">
                 {selectedTeamFilter === 'all' 
-                  ? "You haven't joined any channels yet. Channels will appear here once you're added to them."
-                  : "There are no channels in this team yet."
+                  ? "You haven't joined any channels yet. Discover and join channels from the Dashboard to get started!"
+                  : "You haven't joined any channels in this team yet."
                 }
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link
-                  to="/teams"
+                  to="/dashboard"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
                   <Hash className="w-4 h-4" />
-                  Browse Teams
+                  Discover Channels
                 </Link>
                 {selectedTeamFilter !== 'all' && (
                   <Button

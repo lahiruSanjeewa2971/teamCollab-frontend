@@ -1,23 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useDispatch, useSelector } from 'react-redux';
-import { toast } from 'react-toastify';
-import { channelSchema } from '../../lib/channelSchemas.js';
-import { createChannel, clearCreateError } from '../../redux/slices/channelsSlice.js';
-import { selectTeams } from '../../redux/slices/teamSlice.js';
-import { selectIsCreatingChannel, selectCreateChannelError } from '../../redux/slices/channelsSlice.js';
-import { useSocket } from '../../contexts/SocketContext.jsx';
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import { channelSchema } from "../../lib/channelSchemas.js";
+import {
+  createChannel,
+  clearCreateError,
+} from "../../redux/slices/channelsSlice.js";
+import { selectTeamsWhereUserIsOwner } from "../../redux/slices/teamSlice.js";
+import {
+  selectIsCreatingChannel,
+  selectCreateChannelError,
+} from "../../redux/slices/channelsSlice.js";
+import { useSocket } from "../../contexts/SocketContext.jsx";
 
 // shadcn/ui components
-import { Button } from '../ui/button.jsx';
-import { Input } from '../ui/input.jsx';
-import { Label } from '../ui/label.jsx';
-import { Textarea } from '../ui/textarea.jsx';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select.jsx';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group.jsx';
-import { Separator } from '../ui/separator.jsx';
-import { ScrollArea } from '../ui/scroll-area.jsx';
+import { Button } from "../ui/button.jsx";
+import { Input } from "../ui/input.jsx";
+import { Label } from "../ui/label.jsx";
+import { Textarea } from "../ui/textarea.jsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select.jsx";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group.jsx";
+import { Separator } from "../ui/separator.jsx";
+import { ScrollArea } from "../ui/scroll-area.jsx";
 import {
   Dialog,
   DialogContent,
@@ -25,16 +37,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../ui/dialog.jsx';
+} from "../ui/dialog.jsx";
 
 const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
   const dispatch = useDispatch();
   const { socketService } = useSocket();
-  const teams = useSelector(selectTeams);
+  const teams = useSelector(selectTeamsWhereUserIsOwner);
   const isCreating = useSelector(selectIsCreatingChannel);
   const createError = useSelector(selectCreateChannelError);
 
-  // Use all teams (no filtering)
+  // Use only teams where user is the owner (can create channels)
 
   const {
     register,
@@ -44,21 +56,21 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
     setValue,
     watch,
     setError,
-    clearErrors
+    clearErrors,
   } = useForm({
     resolver: zodResolver(channelSchema),
-    mode: 'onChange',
+    mode: "onChange",
     defaultValues: {
-      teamId: currentTeamId || '',
-      name: '',
-      displayName: '',
-      description: '',
-      type: 'public'
-    }
+      teamId: currentTeamId || "",
+      name: "",
+      displayName: "",
+      description: "",
+      type: "public",
+    },
   });
 
-  const watchedName = watch('name');
-  const watchedTeamId = watch('teamId');
+  const watchedName = watch("name");
+  const watchedTeamId = watch("teamId");
 
   // Clear form errors when dialog opens/closes
   useEffect(() => {
@@ -66,7 +78,7 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
       clearErrors();
       dispatch(clearCreateError());
       if (currentTeamId) {
-        setValue('teamId', currentTeamId);
+        setValue("teamId", currentTeamId);
       }
     } else {
       reset();
@@ -75,10 +87,10 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
 
   // Handle 409 conflict error
   useEffect(() => {
-    if (createError?.code === 'CHANNEL_NAME_TAKEN') {
-      setError('name', { 
-        type: 'manual', 
-        message: createError.message 
+    if (createError?.code === "CHANNEL_NAME_TAKEN") {
+      setError("name", {
+        type: "manual",
+        message: createError.message,
       });
     }
   }, [createError, setError]);
@@ -89,7 +101,7 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
       const cleanData = {
         ...data,
         displayName: data.displayName?.trim() || undefined,
-        description: data.description?.trim() || undefined
+        description: data.description?.trim() || undefined,
       };
 
       // Ensure user is in the team room for real-time updates
@@ -97,18 +109,20 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
         socketService.joinTeamRoom(data.teamId);
       }
 
-      await dispatch(createChannel({ 
-        teamId: data.teamId, 
-        channelData: cleanData 
-      })).unwrap();
+      await dispatch(
+        createChannel({
+          teamId: data.teamId,
+          channelData: cleanData,
+        })
+      ).unwrap();
 
       // Success - close dialog and reset form
       onClose();
       reset();
-      toast.success('Channel created successfully!');
+      toast.success("Channel created successfully!");
     } catch (error) {
       // Error handling is done in the slice
-      console.error('Failed to create channel:', error);
+      console.error("Failed to create channel:", error);
     }
   };
 
@@ -133,9 +147,9 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
               {/* Team Selection */}
               <div className="space-y-2">
                 <Label htmlFor="teamId">Team *</Label>
-                                <Select
+                <Select
                   value={watchedTeamId}
-                  onValueChange={(value) => setValue('teamId', value)}
+                  onValueChange={(value) => setValue("teamId", value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a team" />
@@ -149,10 +163,14 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
                   </SelectContent>
                 </Select>
                 {!watchedTeamId && (
-                  <p className="text-sm text-muted-foreground">Please select a team to create a channel</p>
+                  <p className="text-sm text-muted-foreground">
+                    Please select a team to create a channel
+                  </p>
                 )}
                 {errors.teamId && (
-                  <p className="text-sm text-red-500">{errors.teamId.message}</p>
+                  <p className="text-sm text-red-500">
+                    {errors.teamId.message}
+                  </p>
                 )}
               </div>
 
@@ -164,12 +182,13 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
                 <Input
                   id="name"
                   placeholder="e.g., frontend-dev"
-                  {...register('name')}
-                  className={errors.name ? 'border-red-500' : ''}
+                  {...register("name")}
+                  className={errors.name ? "border-red-500" : ""}
                 />
                 {watchedName && (
                   <p className="text-sm text-muted-foreground">
-                    Will be displayed as: <span className="font-mono">#{watchedName}</span>
+                    Will be displayed as:{" "}
+                    <span className="font-mono">#{watchedName}</span>
                   </p>
                 )}
                 {errors.name && (
@@ -183,10 +202,12 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
                 <Input
                   id="displayName"
                   placeholder="e.g., Frontend Development"
-                  {...register('displayName')}
+                  {...register("displayName")}
                 />
                 {errors.displayName && (
-                  <p className="text-sm text-red-500">{errors.displayName.message}</p>
+                  <p className="text-sm text-red-500">
+                    {errors.displayName.message}
+                  </p>
                 )}
               </div>
 
@@ -196,15 +217,17 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
                 <Textarea
                   id="description"
                   placeholder="What is this channel about?"
-                  {...register('description')}
+                  {...register("description")}
                   maxLength={300}
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Max 300 characters</span>
-                  <span>{watch('description')?.length || 0}/300</span>
+                  <span>{watch("description")?.length || 0}/300</span>
                 </div>
                 {errors.description && (
-                  <p className="text-sm text-red-500">{errors.description.message}</p>
+                  <p className="text-sm text-red-500">
+                    {errors.description.message}
+                  </p>
                 )}
               </div>
 
@@ -212,17 +235,21 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
               <div className="space-y-2">
                 <Label>Channel type</Label>
                 <RadioGroup
-                  value={watch('type')}
-                  onValueChange={(value) => setValue('type', value)}
+                  value={watch("type")}
+                  onValueChange={(value) => setValue("type", value)}
                   className="flex flex-col space-y-1"
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="public" id="public" />
-                    <Label htmlFor="public">Public - All team members can see and join</Label>
+                    <Label htmlFor="public">
+                      Public - All team members can see and join
+                    </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="private" id="private" />
-                    <Label htmlFor="private">Private - Only invited members can access</Label>
+                    <Label htmlFor="private">
+                      Private - Only invited members can access
+                    </Label>
                   </div>
                 </RadioGroup>
                 {errors.type && (
@@ -241,7 +268,7 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
             >
               Cancel
             </Button>
-                                                <Button
+            <Button
               type="submit"
               disabled={!isValid || isCreating || !watchedTeamId}
             >
@@ -251,7 +278,7 @@ const CreateChannelDialog = ({ isOpen, onClose, currentTeamId = null }) => {
                   Creating...
                 </>
               ) : (
-                'Create Channel'
+                "Create Channel"
               )}
             </Button>
           </DialogFooter>

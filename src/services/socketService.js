@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-import { handleChannelCreated, handleChannelUpdated, handleChannelDeleted } from '../socket/handlers/channelHandlers.js';
+import { handleChannelCreated, handleChannelUpdated, handleChannelDeleted, handleChannelMemberJoined } from '../socket/handlers/channelHandlers.js';
 
 /**
  * Simple Socket.IO Service - KISS Principle
@@ -111,6 +111,7 @@ class SocketService {
     this.socket.on('channel:created', handleChannelCreated);
     this.socket.on('channel:updated', handleChannelUpdated);
     this.socket.on('channel:deleted', handleChannelDeleted);
+    this.socket.on('channel:member:joined', handleChannelMemberJoined);
   }
 
   _attemptReconnection(userId) {

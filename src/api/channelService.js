@@ -49,5 +49,29 @@ export const channelService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  /**
+   * Get all channels from teams where user is a member
+   */
+  async getChannelsFromUserTeams(teamIds) {
+    try {
+      const response = await axios.post(`${API_BASE}/channels/from-teams`, { teamIds });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Join a channel
+   */
+  async joinChannel(channelId) {
+    try {
+      const response = await axios.post(`${API_BASE}/channels/${channelId}/join`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };

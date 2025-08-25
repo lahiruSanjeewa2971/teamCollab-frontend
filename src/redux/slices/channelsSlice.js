@@ -51,15 +51,48 @@ export const fetchUserChannels = createAsyncThunk(
   }
 );
 
+export const fetchChannelsFromUserTeams = createAsyncThunk(
+  "channels/fetchChannelsFromUserTeams",
+  async (teamIds, { rejectWithValue }) => {
+    try {
+      const response = await channelService.getChannelsFromUserTeams(teamIds);
+      return response.channels;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch channels from teams"
+      );
+    }
+  }
+);
+
+export const joinChannel = createAsyncThunk(
+  "channels/joinChannel",
+  async (channelId, { rejectWithValue }) => {
+    try {
+      const response = await channelService.joinChannel(channelId);
+      return response.channel;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to join channel"
+      );
+    }
+  }
+);
+
 const initialState = {
   byTeamId: {},
   userChannels: [],
+  availableChannels: [], // All channels from user's teams
   creating: false,
   createError: null,
   loading: false,
   error: null,
   userChannelsLoading: false,
   userChannelsError: null,
+  availableChannelsLoading: false,
+  availableChannelsError: null,
+  joining: false,
+  joinError: null,
 };
 
 const channelsSlice = createSlice({
@@ -99,6 +132,33 @@ const channelsSlice = createSlice({
 
       if (existingIndex === -1) {
         state.userChannels.unshift(channel); // Add to beginning (newest first)
+      }
+
+      // Also add channel to available channels for Dashboard real-time updates
+      const availableChannelIndex = state.availableChannels.findIndex(
+        (c) => c._id === channel._id
+      );
+
+      if (availableChannelIndex === -1) {
+        state.availableChannels.push(channel);
+        // Sort alphabetically by name
+        state.availableChannels.sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+      }
+    },
+
+    updateChannelInAvailableChannels: (state, action) => {
+      const { channel } = action.payload;
+      
+      // Update channel in availableChannels list
+      const availableChannelIndex = state.availableChannels.findIndex(
+        (c) => c._id === channel._id
+      );
+
+      if (availableChannelIndex !== -1) {
+        // Update the existing channel with new data
+        state.availableChannels[availableChannelIndex] = channel;
       }
     },
     clearChannelsForTeam: (state, action) => {
@@ -171,6 +231,19 @@ const channelsSlice = createSlice({
           state.userChannels.unshift(channel); // Add to beginning (newest first)
         }
 
+        // Also add channel to available channels for Dashboard real-time updates
+        const availableChannelIndex = state.availableChannels.findIndex(
+          (c) => c._id === channel._id
+        );
+
+        if (availableChannelIndex === -1) {
+          state.availableChannels.push(channel);
+          // Sort alphabetically by name
+          state.availableChannels.sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
+        }
+
         toast.success("Channel created successfully!");
       })
       .addCase(createChannel.rejected, (state, action) => {
@@ -197,6 +270,58 @@ const channelsSlice = createSlice({
       .addCase(fetchUserChannels.rejected, (state, action) => {
         state.userChannelsLoading = false;
         state.userChannelsError = action.payload;
+      })
+
+      // Fetch channels from user teams
+      .addCase(fetchChannelsFromUserTeams.pending, (state) => {
+        state.availableChannelsLoading = true;
+        state.availableChannelsError = null;
+      })
+      .addCase(fetchChannelsFromUserTeams.fulfilled, (state, action) => {
+        state.availableChannelsLoading = false;
+        state.availableChannelsError = null;
+        state.availableChannels = action.payload;
+      })
+      .addCase(fetchChannelsFromUserTeams.rejected, (state, action) => {
+        state.availableChannelsLoading = false;
+        state.availableChannelsError = action.payload;
+      })
+
+      // Join channel
+      .addCase(joinChannel.pending, (state) => {
+        state.joining = true;
+        state.joinError = null;
+      })
+      .addCase(joinChannel.fulfilled, (state, action) => {
+        const channel = action.payload;
+        state.joining = false;
+        state.joinError = null;
+
+        // Update the channel in availableChannels to show it as joined
+        const availableChannelIndex = state.availableChannels.findIndex(
+          (c) => c._id === channel._id
+        );
+
+        if (availableChannelIndex !== -1) {
+          // Update the existing channel with the new data (including updated members)
+          state.availableChannels[availableChannelIndex] = channel;
+        }
+
+        // Add channel to user channels
+        const userChannelIndex = state.userChannels.findIndex(
+          (c) => c._id === channel._id
+        );
+
+        if (userChannelIndex === -1) {
+          state.userChannels.unshift(channel); // Add to beginning (newest first)
+        }
+
+        toast.success("Successfully joined channel!");
+      })
+      .addCase(joinChannel.rejected, (state, action) => {
+        state.joining = false;
+        state.joinError = action.payload;
+        toast.error(action.payload || "Failed to join channel");
       });
   },
 });
@@ -205,6 +330,7 @@ export const {
   clearCreateError,
   addChannelToTeam,
   addChannelToUserChannels,
+  updateChannelInAvailableChannels,
   clearChannelsForTeam,
 } = channelsSlice.actions;
 
@@ -226,5 +352,14 @@ export const selectUserChannelsLoading = (state) =>
   state.channels.userChannelsLoading;
 export const selectUserChannelsError = (state) =>
   state.channels.userChannelsError;
+
+export const selectAvailableChannels = (state) => state.channels.availableChannels;
+export const selectAvailableChannelsLoading = (state) =>
+  state.channels.availableChannelsLoading;
+export const selectAvailableChannelsError = (state) =>
+  state.channels.availableChannelsError;
+
+export const selectIsJoiningChannel = (state) => state.channels.joining;
+export const selectJoinChannelError = (state) => state.channels.joinError;
 
 export default channelsSlice.reducer;
