@@ -79,10 +79,53 @@ export const joinChannel = createAsyncThunk(
   }
 );
 
+export const fetchChannelById = createAsyncThunk(
+  "channels/fetchChannelById",
+  async (channelId, { rejectWithValue }) => {
+    try {
+      const response = await channelService.getChannelById(channelId);
+      return response.channel;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch channel"
+      );
+    }
+  }
+);
+
+export const addMembersToChannel = createAsyncThunk(
+  "channels/addMembersToChannel",
+  async ({ channelId, userIds }, { rejectWithValue }) => {
+    try {
+      const response = await channelService.addMembersToChannel(channelId, userIds);
+      return response.channel;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to add members to channel"
+      );
+    }
+  }
+);
+
+export const getChannelTeamMembers = createAsyncThunk(
+  "channels/getChannelTeamMembers",
+  async (channelId, { rejectWithValue }) => {
+    try {
+      const response = await channelService.getChannelTeamMembers(channelId);
+      return response.team;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch team members"
+      );
+    }
+  }
+);
+
 const initialState = {
   byTeamId: {},
   userChannels: [],
   availableChannels: [], // All channels from user's teams
+  currentChannel: null, // Currently viewed channel
   creating: false,
   createError: null,
   loading: false,
@@ -93,6 +136,13 @@ const initialState = {
   availableChannelsError: null,
   joining: false,
   joinError: null,
+  currentChannelLoading: false,
+  currentChannelError: null,
+  addingMembers: false,
+  addMembersError: null,
+  teamMembers: null,
+  teamMembersLoading: false,
+  teamMembersError: null,
 };
 
 const channelsSlice = createSlice({
@@ -322,6 +372,78 @@ const channelsSlice = createSlice({
         state.joining = false;
         state.joinError = action.payload;
         toast.error(action.payload || "Failed to join channel");
+      })
+
+      // Fetch channel by ID
+      .addCase(fetchChannelById.pending, (state) => {
+        state.currentChannelLoading = true;
+        state.currentChannelError = null;
+      })
+      .addCase(fetchChannelById.fulfilled, (state, action) => {
+        state.currentChannelLoading = false;
+        state.currentChannelError = null;
+        console.log('current channel set to:', action.payload);
+        state.currentChannel = action.payload;
+      })
+      .addCase(fetchChannelById.rejected, (state, action) => {
+        state.currentChannelLoading = false;
+        state.currentChannelError = action.payload;
+        toast.error(action.payload || "Failed to fetch channel");
+      })
+
+      // Add members to channel
+      .addCase(addMembersToChannel.pending, (state) => {
+        state.addingMembers = true;
+        state.addMembersError = null;
+      })
+      .addCase(addMembersToChannel.fulfilled, (state, action) => {
+        const updatedChannel = action.payload;
+        state.addingMembers = false;
+        state.addMembersError = null;
+
+        // Update currentChannel if it's the same channel
+        if (state.currentChannel && state.currentChannel._id === updatedChannel._id) {
+          state.currentChannel = updatedChannel;
+        }
+
+        // Update channel in availableChannels
+        const availableChannelIndex = state.availableChannels.findIndex(
+          (c) => c._id === updatedChannel._id
+        );
+        if (availableChannelIndex !== -1) {
+          state.availableChannels[availableChannelIndex] = updatedChannel;
+        }
+
+        // Update channel in userChannels if user is a member
+        const userChannelIndex = state.userChannels.findIndex(
+          (c) => c._id === updatedChannel._id
+        );
+        if (userChannelIndex !== -1) {
+          state.userChannels[userChannelIndex] = updatedChannel;
+        }
+
+        toast.success("Members added to channel successfully!");
+      })
+      .addCase(addMembersToChannel.rejected, (state, action) => {
+        state.addingMembers = false;
+        state.addMembersError = action.payload;
+        toast.error(action.payload || "Failed to add members to channel");
+      })
+
+      // Get team members for channel
+      .addCase(getChannelTeamMembers.pending, (state) => {
+        state.teamMembersLoading = true;
+        state.teamMembersError = null;
+      })
+      .addCase(getChannelTeamMembers.fulfilled, (state, action) => {
+        state.teamMembersLoading = false;
+        state.teamMembersError = null;
+        state.teamMembers = action.payload;
+      })
+      .addCase(getChannelTeamMembers.rejected, (state, action) => {
+        state.teamMembersLoading = false;
+        state.teamMembersError = action.payload;
+        toast.error(action.payload || "Failed to fetch team members");
       });
   },
 });
@@ -361,5 +483,16 @@ export const selectAvailableChannelsError = (state) =>
 
 export const selectIsJoiningChannel = (state) => state.channels.joining;
 export const selectJoinChannelError = (state) => state.channels.joinError;
+
+export const selectCurrentChannel = (state) => state.channels.currentChannel;
+export const selectCurrentChannelLoading = (state) => state.channels.currentChannelLoading;
+export const selectCurrentChannelError = (state) => state.channels.currentChannelError;
+
+export const selectIsAddingMembers = (state) => state.channels.addingMembers;
+export const selectAddMembersError = (state) => state.channels.addMembersError;
+
+export const selectTeamMembers = (state) => state.channels.teamMembers;
+export const selectTeamMembersLoading = (state) => state.channels.teamMembersLoading;
+export const selectTeamMembersError = (state) => state.channels.teamMembersError;
 
 export default channelsSlice.reducer;

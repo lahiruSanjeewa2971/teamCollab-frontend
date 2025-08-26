@@ -73,5 +73,29 @@ export const channelService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  /**
+   * Add multiple members to a channel
+   */
+  async addMembersToChannel(channelId, userIds) {
+    try {
+      const response = await axios.post(`${API_BASE}/channels/${channelId}/members`, { userIds });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Get team members for a channel (for adding members)
+   */
+  async getChannelTeamMembers(channelId) {
+    try {
+      const response = await axios.get(`${API_BASE}/channels/getTeamMembers/${channelId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };

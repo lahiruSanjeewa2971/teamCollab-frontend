@@ -198,27 +198,36 @@ export default function Channels() {
               {filteredChannels.map((channel) => (
                 <div
                   key={channel._id}
-                  className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-4 sm:p-6"
+                  className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-4 sm:p-6 flex flex-col"
                 >
                   {/* Channel Header */}
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         <Hash className="w-4 h-4 text-blue-600" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
-                          #{channel.name}
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-gray-900 text-sm sm:text-base leading-tight">
+                          {channel.name.length > 12 ? (
+                            <>
+                              <span className="block">#{channel.name.substring(0, 12)}</span>
+                              <span className="block text-left">{channel.name.substring(12)}</span>
+                            </>
+                          ) : (
+                            <span>#{channel.name}</span>
+                          )}
                         </h3>
                         {channel.displayName && (
-                          <p className="text-xs text-gray-500">{channel.displayName}</p>
+                          <p className="text-xs text-gray-500 line-clamp-1 mt-1">
+                            {channel.displayName}
+                          </p>
                         )}
                       </div>
                     </div>
                     
                     {/* Admin Badge */}
                     {isChannelAdmin(channel) && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex-shrink-0 ml-2">
                         Admin
                       </span>
                     )}
@@ -226,11 +235,17 @@ export default function Channels() {
 
                   {/* Channel Info */}
                   <div className="space-y-2 mb-4">
-                    {channel.description && (
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {channel.description}
-                      </p>
-                    )}
+                    <div className="h-12 flex items-start">
+                      {channel.description ? (
+                        <p className="text-sm text-gray-600 line-clamp-2 leading-tight">
+                          {channel.description}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">
+                          No description available
+                        </p>
+                      )}
+                    </div>
                     
                     <div className="flex items-center gap-4 text-xs text-gray-500">
                       <div className="flex items-center gap-1">
@@ -246,7 +261,7 @@ export default function Channels() {
                   </div>
 
                   {/* Channel Actions */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mt-auto">
                     <Link
                       to={`/channels/${channel._id}`}
                       className="flex-1 text-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
@@ -255,18 +270,16 @@ export default function Channels() {
                     </Link>
                     
                     {isChannelAdmin(channel) && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="px-3 py-2 h-auto"
-                        onClick={() => {
-                          // TODO: Implement channel management
-                          console.log('Manage channel:', channel._id);
-                        }}
-                      >
-                        <Settings className="w-4 h-4" />
-                        <span className="hidden sm:inline ml-1">Manage</span>
-                      </Button>
+                      <Link to={`/channels/${channel._id}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="px-3 py-2 h-auto w-full"
+                        >
+                          <Settings className="w-4 h-4" />
+                          <span className="hidden sm:inline ml-1">Manage</span>
+                        </Button>
+                      </Link>
                     )}
                   </div>
 
