@@ -78,7 +78,7 @@ export default function Teams() {
   const dispatch = useDispatch();
   const { teams, isLoading, isCreating } = useSelector((state) => state.team);
   const { user } = useSelector((state) => state.auth);
-  const errorMessage = useSelector((state) => state.error.message);
+  // Remove global error subscription - errors should be handled locally where they occur
   const navigate = useNavigate();
 
   // Team creation form
@@ -288,13 +288,6 @@ export default function Teams() {
                       'Create Team'
                     )}
                   </Button>
-
-                  {/* Error Display */}
-                  {errorMessage && (
-                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                      <p className="text-sm text-red-600">{errorMessage}</p>
-                    </div>
-                  )}
                 </form>
               </Form>
             </div>
@@ -445,12 +438,21 @@ export default function Teams() {
                           <div className="flex -space-x-1">
                             {Array.isArray(team.members) && team.members.length > 0 ? (
                               <>
-                                {team.members.slice(0, 3).map((member, memberIndex) => (
+                                {team.members?.slice(0, 3).map((member, index) => (
                                   <div 
-                                    key={member._id || member.id || memberIndex} 
-                                    className="w-7 h-7 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-xs text-white font-medium border-2 border-white shadow-sm"
+                                    key={member._id || index} 
+                                    className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-xs text-white font-medium"
+                                    title={member.name}
                                   >
-                                    {getMemberInitials(member)}
+                                    {member.avatarUrl ? (
+                                      <img 
+                                        src={member.avatarUrl} 
+                                        alt={member.name} 
+                                        className="w-full h-full rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      getMemberInitials(member)
+                                    )}
                                   </div>
                                 ))}
                                 {team.members.length > 3 && (

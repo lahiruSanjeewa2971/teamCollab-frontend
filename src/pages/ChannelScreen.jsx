@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Search,
   X,
+  Trash2,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -27,6 +28,16 @@ import {
   TabsTrigger,
 } from "../components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 import TopBar from "../components/TopBar";
 import Footer from "../components/Footer";
 import { store } from "../redux/store";
@@ -40,6 +51,8 @@ import {
   getChannelTeamMembers,
   selectTeamMembers,
   selectTeamMembersLoading,
+  removeMemberFromChannel,
+  selectIsRemovingMember,
 } from "../redux/slices/channelsSlice";
 
 import { toast } from "react-toastify";
@@ -129,7 +142,7 @@ const MessagesSection = ({ channel, isAdmin }) => (
   </div>
 );
 
-const MembersSection = ({ channel, isAdmin, onAddMember }) => (
+const MembersSection = ({ channel, isAdmin, onAddMember, onRemoveMember }) => (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
       <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -157,10 +170,10 @@ const MembersSection = ({ channel, isAdmin, onAddMember }) => (
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={member.userId?.avatar} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-medium">
-                    {member.userId?.name?.charAt(0) || "U"}
+                <Avatar>
+                  <AvatarImage src={member.userId?.avatarUrl} />
+                  <AvatarFallback>
+                    {getMemberInitials(member.userId)}
                   </AvatarFallback>
                 </Avatar>
 
@@ -192,8 +205,9 @@ const MembersSection = ({ channel, isAdmin, onAddMember }) => (
                     size="sm"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                     title="Remove member"
+                    onClick={() => onRemoveMember(member)}
                   >
-                    <Users className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 )}
               </div>
@@ -586,6 +600,66 @@ const AddMemberDialog = ({
   );
 };
 
+// Remove Member Dialog Component
+const RemoveMemberDialog = ({
+  isOpen,
+  onClose,
+  channel,
+  memberToRemove,
+  isRemoving,
+  onRemoveMember,
+}) => {
+  if (!isOpen) return null;
+
+  const memberName = memberToRemove?.userId?.name || memberToRemove?.userId?.email || "this user";
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={onClose}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Are you absolutely sure you want to remove{" "}
+            <span className="font-semibold">{memberName}</span>{" "}
+            from the channel?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently remove{" "}
+            {memberName} from the channel. The user will remain a member of the team.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onClose} disabled={isRemoving}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onRemoveMember}
+            disabled={isRemoving}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {isRemoving ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Removing...
+              </div>
+            ) : (
+              "Remove Member"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+// Helper function to get member initials
+const getMemberInitials = (user) => {
+  if (!user) return "U";
+  const name = user.name || "";
+  const firstChar = name.charAt(0);
+  const lastChar = name.charAt(name.length - 1);
+  return `${firstChar}${lastChar}`;
+};
+
 // Main Channel Screen Component
 export default function ChannelScreen() {
   const { channelId } = useParams();
@@ -595,6 +669,8 @@ export default function ChannelScreen() {
   // State management
   const [activeTab, setActiveTab] = useState("messages");
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
+  const [showRemoveMemberDialog, setShowRemoveMemberDialog] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState(null);
 
   // Get data from Redux
   const currentUser = useSelector((state) => state.auth.user);
@@ -602,6 +678,7 @@ export default function ChannelScreen() {
   const isLoading = useSelector(selectCurrentChannelLoading);
   const error = useSelector(selectCurrentChannelError);
   const isAddingMembers = useSelector(selectIsAddingMembers);
+  const isRemovingMember = useSelector(selectIsRemovingMember);
   const teamMembers = useSelector(selectTeamMembers);
   const teamMembersLoading = useSelector(selectTeamMembersLoading);
 
@@ -662,6 +739,27 @@ export default function ChannelScreen() {
       console.error("Error adding members:", error);
       // Error handling is done in the Redux slice
     }
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove) return;
+    console.log('memberToRemove :', memberToRemove);
+
+    try {
+      await dispatch(
+        removeMemberFromChannel({ channelId: channel._id, memberId: memberToRemove.userId._id })
+      ).unwrap();
+      setShowRemoveMemberDialog(false);
+      setMemberToRemove(null);
+    } catch (error) {
+      console.error("Error removing member:", error);
+      // Error handling is done in the Redux slice
+    }
+  };
+
+  const handleRemoveMemberClick = (member) => {
+    setMemberToRemove(member);
+    setShowRemoveMemberDialog(true);
   };
 
   // Loading state
@@ -784,6 +882,7 @@ export default function ChannelScreen() {
                 channel={channel}
                 isAdmin={isChannelAdmin}
                 onAddMember={handleAddMember}
+                onRemoveMember={handleRemoveMemberClick}
               />
             </TabsContent>
 
@@ -805,6 +904,16 @@ export default function ChannelScreen() {
         isAdding={isAddingMembers}
         teamMembers={teamMembers}
         teamMembersLoading={teamMembersLoading}
+      />
+
+      {/* Remove Member Dialog */}
+      <RemoveMemberDialog
+        isOpen={showRemoveMemberDialog}
+        onClose={() => setShowRemoveMemberDialog(false)}
+        channel={channel}
+        memberToRemove={memberToRemove}
+        isRemoving={isRemovingMember}
+        onRemoveMember={handleRemoveMember}
       />
     </div>
   );

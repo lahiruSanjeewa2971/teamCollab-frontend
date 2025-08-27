@@ -97,5 +97,17 @@ export const channelService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  /**
+   * Remove a member from a channel
+   */
+  async removeMemberFromChannel(channelId, memberId) {
+    try {
+      const response = await axios.delete(`${API_BASE}/channels/${channelId}/members/${memberId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };

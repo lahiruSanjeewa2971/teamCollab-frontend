@@ -121,6 +121,20 @@ export const getChannelTeamMembers = createAsyncThunk(
   }
 );
 
+export const removeMemberFromChannel = createAsyncThunk(
+  "channels/removeMemberFromChannel",
+  async ({ channelId, memberId }, { rejectWithValue }) => {
+    try {
+      const response = await channelService.removeMemberFromChannel(channelId, memberId);
+      return response.channel;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to remove member from channel"
+      );
+    }
+  }
+);
+
 const initialState = {
   byTeamId: {},
   userChannels: [],
@@ -140,6 +154,8 @@ const initialState = {
   currentChannelError: null,
   addingMembers: false,
   addMembersError: null,
+  removingMember: false,
+  removeMemberError: null,
   teamMembers: null,
   teamMembersLoading: false,
   teamMembersError: null,
@@ -430,6 +446,45 @@ const channelsSlice = createSlice({
         toast.error(action.payload || "Failed to add members to channel");
       })
 
+      // Remove member from channel
+      .addCase(removeMemberFromChannel.pending, (state) => {
+        state.removingMember = true;
+        state.removeMemberError = null;
+      })
+      .addCase(removeMemberFromChannel.fulfilled, (state, action) => {
+        const updatedChannel = action.payload;
+        state.removingMember = false;
+        state.removeMemberError = null;
+
+        // Update currentChannel if it's the same channel
+        if (state.currentChannel && state.currentChannel._id === updatedChannel._id) {
+          state.currentChannel = updatedChannel;
+        }
+
+        // Update channel in availableChannels
+        const availableChannelIndex = state.availableChannels.findIndex(
+          (c) => c._id === updatedChannel._id
+        );
+        if (availableChannelIndex !== -1) {
+          state.availableChannels[availableChannelIndex] = updatedChannel;
+        }
+
+        // Update channel in userChannels if user is a member
+        const userChannelIndex = state.userChannels.findIndex(
+          (c) => c._id === updatedChannel._id
+        );
+        if (userChannelIndex !== -1) {
+          state.userChannels[userChannelIndex] = updatedChannel;
+        }
+
+        toast.success("Member removed from channel successfully!");
+      })
+      .addCase(removeMemberFromChannel.rejected, (state, action) => {
+        state.removingMember = false;
+        state.removeMemberError = action.payload;
+        toast.error(action.payload || "Failed to remove member from channel");
+      })
+
       // Get team members for channel
       .addCase(getChannelTeamMembers.pending, (state) => {
         state.teamMembersLoading = true;
@@ -490,6 +545,9 @@ export const selectCurrentChannelError = (state) => state.channels.currentChanne
 
 export const selectIsAddingMembers = (state) => state.channels.addingMembers;
 export const selectAddMembersError = (state) => state.channels.addMembersError;
+
+export const selectIsRemovingMember = (state) => state.channels.removingMember;
+export const selectRemoveMemberError = (state) => state.channels.removeMemberError;
 
 export const selectTeamMembers = (state) => state.channels.teamMembers;
 export const selectTeamMembersLoading = (state) => state.channels.teamMembersLoading;

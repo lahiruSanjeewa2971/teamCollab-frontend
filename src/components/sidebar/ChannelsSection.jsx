@@ -23,6 +23,8 @@ const ChannelsSection = ({ currentTeamId = null }) => {
   const teamsLoading = useSelector(selectTeamsLoading);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(currentTeamId);
+  // Add local state to track which specific channel is being joined
+  const [joiningChannelId, setJoiningChannelId] = useState(null);
 
   // Get all user channels (joined channels)
   const userChannels = useSelector(selectUserChannels);
@@ -32,7 +34,7 @@ const ChannelsSection = ({ currentTeamId = null }) => {
   const availableChannels = useSelector(selectAvailableChannels);
   const availableChannelsLoading = useSelector(selectAvailableChannelsLoading);
   
-  // Get join channel state
+  // Get join channel state (keep for backward compatibility but won't use for loading)
   const isJoining = useSelector(selectIsJoiningChannel);
   
   // Get current user ID
@@ -99,6 +101,18 @@ const ChannelsSection = ({ currentTeamId = null }) => {
     };
   }, [selectedTeamId, socketService]);
 
+  // Clear local joining state when channel is successfully joined
+  useEffect(() => {
+    if (joiningChannelId && !isJoining) {
+      // Redux joining state is false, meaning the operation completed
+      // Check if the channel is now in userChannels (successfully joined)
+      const isNowMember = userChannels.some(channel => channel._id === joiningChannelId);
+      if (isNowMember) {
+        setJoiningChannelId(null);
+      }
+    }
+  }, [joiningChannelId, isJoining, userChannels]);
+
   // Check if user is a member of a channel
   const isChannelMember = (channelId) => {
     // First check if it's in userChannels (already joined)
@@ -129,8 +143,18 @@ const ChannelsSection = ({ currentTeamId = null }) => {
     setIsCreateDialogOpen(false);
   };
 
-  const handleJoinChannel = (channelId) => {
-    dispatch(joinChannel(channelId));
+  const handleJoinChannel = async (channelId) => {
+    // Set local loading state for this specific channel
+    setJoiningChannelId(channelId);
+    
+    try {
+      await dispatch(joinChannel(channelId)).unwrap();
+      // Success - channel joined, local state will be cleared by useEffect
+    } catch (error) {
+      // Error occurred, clear local loading state
+      setJoiningChannelId(null);
+      console.error('Failed to join channel:', error);
+    }
   };
 
   const getChannelIcon = (type) => {
@@ -144,8 +168,8 @@ const ChannelsSection = ({ currentTeamId = null }) => {
   // Show loading if either channels or teams are loading
   const isLoading = userChannelsLoading || availableChannelsLoading || teamsLoading;
   
-  // Check if a specific channel is being joined
-  const isChannelBeingJoined = (channelId) => isJoining && availableChannels.some(c => c._id === channelId);
+  // Check if a specific channel is being joined using local state
+  const isChannelBeingJoined = (channelId) => joiningChannelId === channelId;
 
   return (
     <div className="space-y-2">

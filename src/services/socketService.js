@@ -112,6 +112,12 @@ class SocketService {
     this.socket.on('channel:updated', handleChannelUpdated);
     this.socket.on('channel:deleted', handleChannelDeleted);
     this.socket.on('channel:member:joined', handleChannelMemberJoined);
+    
+    // User notification event handlers
+    this.socket.on('user:added-to-channel', (data) => {
+      console.log('📡 User added to channel event received:', data);
+      // This event is handled in SocketContext for global notification management
+    });
   }
 
   _attemptReconnection(userId) {

@@ -108,6 +108,26 @@ export const SocketProvider = ({ children }) => {
       dispatch(removeTeamFromList(teamId));
     };
 
+    // Global event listener for channel member added - works on ANY screen
+    const handleUserAddedToChannel = (data) => {
+      const { channelId, channelName, teamId, teamName, message } = data;
+      
+      console.log('📢 Global notification: User added to channel:', data);
+      
+      // Add notification to Redux store for Dashboard (no toast, just dashboard update)
+      dispatch(addNotification({
+        type: 'channel_member_added',
+        title: 'Added to Channel',
+        message: `You have been added to channel '${channelName}'`,
+        teamId,
+        teamName,
+        channelId,
+        channelName,
+        severity: 'success',
+        timestamp: new Date().toISOString()
+      }));
+    };
+
     // Register the global event listeners
     const socket = socketService.socket;
     
@@ -115,6 +135,7 @@ export const SocketProvider = ({ children }) => {
     socket.on('user:removed-from-team', handleUserRemovedFromTeam);
     
     // Channel events
+    socket.on('user:added-to-channel', handleUserAddedToChannel);
     socket.on('channel:created', handleChannelCreated);
     socket.on('channel:updated', handleChannelUpdated);
     socket.on('channel:deleted', handleChannelDeleted);
@@ -122,6 +143,7 @@ export const SocketProvider = ({ children }) => {
     // Cleanup function
     return () => {
       socket.off('user:removed-from-team', handleUserRemovedFromTeam);
+      socket.off('user:added-to-channel', handleUserAddedToChannel);
       socket.off('channel:created', handleChannelCreated);
       socket.off('channel:updated', handleChannelUpdated);
       socket.off('channel:deleted', handleChannelDeleted);
