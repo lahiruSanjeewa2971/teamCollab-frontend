@@ -86,7 +86,7 @@ export const SocketProvider = ({ children }) => {
       // Show immediate toast notification (works on any screen)
       toast.error(message, {
         position: "top-right",
-        autoClose: 5000,
+        autoClose: 5001,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,

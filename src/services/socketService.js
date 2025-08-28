@@ -38,7 +38,7 @@ class SocketService {
       console.log('🚀 Initializing socket for user:', userId);
       
       // Create new Socket.IO connection
-      this.socket = io('http://localhost:5000', {
+      this.socket = io('http://localhost:5001', {
         transports: ['websocket', 'polling'],
         timeout: 10000
       });
