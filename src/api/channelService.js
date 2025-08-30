@@ -109,5 +109,17 @@ export const channelService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  /**
+   * Update channel information
+   */
+  async updateChannel(channelId, updateData) {
+    try {
+      const response = await axios.put(`${API_BASE}/channels/${channelId}`, updateData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };

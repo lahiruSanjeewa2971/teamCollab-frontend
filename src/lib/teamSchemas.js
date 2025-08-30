@@ -28,3 +28,21 @@ export const addMemberSchema = z.object({
     .min(1, "User ID is required")
     .regex(/^[0-9a-fA-F]{24}$/, "Invalid user ID format"),
 });
+
+// Channel update schema
+export const updateChannelSchema = z.object({
+  name: z.string()
+    .min(1, "Channel name is required")
+    .min(2, "Channel name must be at least 2 characters")
+    .max(30, "Channel name must be less than 30 characters")
+    .regex(/^[a-zA-Z0-9\-\_]+$/, "Channel name can only contain letters, numbers, hyphens, and underscores"),
+  displayName: z.string()
+    .max(50, "Display name must be less than 50 characters")
+    .optional(),
+  description: z.string()
+    .max(300, "Description must be less than 300 characters")
+    .optional(),
+  type: z.enum(['public', 'private'], {
+    errorMap: () => ({ message: "Channel type must be either 'public' or 'private'" })
+  }).optional(),
+});

@@ -263,14 +263,14 @@ export default function Channels() {
                   {/* Channel Actions */}
                   <div className="flex items-center gap-2 mt-auto">
                     <Link
-                      to={`/channels/${channel._id}`}
+                      to={`/channels/${channel._id}?mode=open`}
                       className="flex-1 text-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
                     >
                       Open Channel
                     </Link>
                     
                     {isChannelAdmin(channel) && (
-                      <Link to={`/channels/${channel._id}`}>
+                      <Link to={`/channels/${channel._id}?mode=manage`}>
                         <Button
                           variant="outline"
                           size="sm"

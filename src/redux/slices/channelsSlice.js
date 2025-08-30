@@ -135,6 +135,20 @@ export const removeMemberFromChannel = createAsyncThunk(
   }
 );
 
+export const updateChannel = createAsyncThunk(
+  "channels/updateChannel",
+  async ({ channelId, updateData }, { rejectWithValue }) => {
+    try {
+      const response = await channelService.updateChannel(channelId, updateData);
+      return response.channel;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update channel"
+      );
+    }
+  }
+);
+
 const initialState = {
   byTeamId: {},
   userChannels: [],
@@ -156,6 +170,8 @@ const initialState = {
   addMembersError: null,
   removingMember: false,
   removeMemberError: null,
+  updating: false,
+  updateError: null,
   teamMembers: null,
   teamMembersLoading: false,
   teamMembersError: null,
@@ -485,6 +501,55 @@ const channelsSlice = createSlice({
         toast.error(action.payload || "Failed to remove member from channel");
       })
 
+      // Update channel
+      .addCase(updateChannel.pending, (state) => {
+        state.updating = true;
+        state.updateError = null;
+      })
+      .addCase(updateChannel.fulfilled, (state, action) => {
+        const updatedChannel = action.payload;
+        state.updating = false;
+        state.updateError = null;
+
+        // Update currentChannel if it's the same channel
+        if (state.currentChannel && state.currentChannel._id === updatedChannel._id) {
+          state.currentChannel = updatedChannel;
+        }
+
+        // Update channel in availableChannels
+        const availableChannelIndex = state.availableChannels.findIndex(
+          (c) => c._id === updatedChannel._id
+        );
+        if (availableChannelIndex !== -1) {
+          state.availableChannels[availableChannelIndex] = updatedChannel;
+        }
+
+        // Update channel in userChannels if user is a member
+        const userChannelIndex = state.userChannels.findIndex(
+          (c) => c._id === updatedChannel._id
+        );
+        if (userChannelIndex !== -1) {
+          state.userChannels[userChannelIndex] = updatedChannel;
+        }
+
+        // Update channel in team-specific lists
+        Object.keys(state.byTeamId).forEach(teamId => {
+          const teamChannelIndex = state.byTeamId[teamId].items.findIndex(
+            (c) => c._id === updatedChannel._id
+          );
+          if (teamChannelIndex !== -1) {
+            state.byTeamId[teamId].items[teamChannelIndex] = updatedChannel;
+          }
+        });
+
+        toast.success("Channel updated successfully!");
+      })
+      .addCase(updateChannel.rejected, (state, action) => {
+        state.updating = false;
+        state.updateError = action.payload;
+        toast.error(action.payload || "Failed to update channel");
+      })
+
       // Get team members for channel
       .addCase(getChannelTeamMembers.pending, (state) => {
         state.teamMembersLoading = true;
@@ -548,6 +613,9 @@ export const selectAddMembersError = (state) => state.channels.addMembersError;
 
 export const selectIsRemovingMember = (state) => state.channels.removingMember;
 export const selectRemoveMemberError = (state) => state.channels.removeMemberError;
+
+export const selectIsUpdatingChannel = (state) => state.channels.updating;
+export const selectUpdateChannelError = (state) => state.channels.updateError;
 
 export const selectTeamMembers = (state) => state.channels.teamMembers;
 export const selectTeamMembersLoading = (state) => state.channels.teamMembersLoading;
