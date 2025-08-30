@@ -26,6 +26,16 @@ const SettingsSection = ({ channel, isAdmin, isManageMode }) => {
   const [errors, setErrors] = useState({});
   const [isDirty, setIsDirty] = useState(false);
 
+  // New form state variables
+  const [newFormData, setNewFormData] = useState({
+    name: "",
+    displayName: "",
+    description: "",
+    type: "public"
+  });
+
+  const [newErrors, setNewErrors] = useState({});
+
   // Initialize form data when channel changes
   useEffect(() => {
     if (channel) {
@@ -37,25 +47,34 @@ const SettingsSection = ({ channel, isAdmin, isManageMode }) => {
       });
       setIsDirty(false);
       setErrors({});
+
+      // Initialize new form data
+      setNewFormData({
+        name: channel.name || "",
+        displayName: channel.displayName || "",
+        description: channel.description || "",
+        type: channel.type || "public"
+      });
+      setNewErrors({});
     }
   }, [channel]);
 
   // Track form changes
   useEffect(() => {
     if (channel) {
-      const hasChanges = 
+      const hasChanges =
         formData.name !== (channel.name || "") ||
         formData.displayName !== (channel.displayName || "") ||
         formData.description !== (channel.description || "") ||
         formData.type !== (channel.type || "public");
-      
+
       setIsDirty(hasChanges);
     }
   }, [formData, channel]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
@@ -100,7 +119,7 @@ const SettingsSection = ({ channel, isAdmin, isManageMode }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate all fields before submission
     const isValid = validateForm();
     if (!isValid) {
@@ -120,9 +139,9 @@ const SettingsSection = ({ channel, isAdmin, isManageMode }) => {
         return;
       }
 
-      await dispatch(updateChannel({ 
-        channelId: channel._id, 
-        updateData 
+      await dispatch(updateChannel({
+        channelId: channel._id,
+        updateData
       })).unwrap();
 
       setIsDirty(false);
@@ -144,27 +163,117 @@ const SettingsSection = ({ channel, isAdmin, isManageMode }) => {
     }
   };
 
-  // Temporary test function to debug validation
-  const testValidation = () => {
-    console.log('Current errors:', errors);
-    console.log('Current formData:', formData);
-    
-    // Test validation manually
-    const testData = { ...formData, name: "" };
+  const validateNewField = (fieldName, value) => {
     try {
-      updateChannelSchema.parse(testData);
-    } catch (error) {
-      console.log('Validation error:', error);
-      const newErrors = {};
-      if (error.errors && Array.isArray(error.errors)) {
-        error.errors.forEach(err => {
-          if (err.path && err.path[0]) {
-            newErrors[err.path[0]] = err.message;
-          }
-        });
+      // Create a field-specific schema for validation
+      const fieldSchema = updateChannelSchema.pick({ [fieldName]: true });
+      
+      // Validate just this field
+      fieldSchema.parse({ [fieldName]: value });
+      return "";
+    } catch (error) {     
+      // Try to access the error data from different possible locations
+      let errorData = null;
+      
+      // Check if error.errors exists (standard Zod structure)
+      if (error.errors && Array.isArray(error.errors) && error.errors.length > 0) {
+        errorData = error.errors;
       }
-      console.log('Parsed errors:', newErrors);
-      setErrors(newErrors);
+      // Check if error has a different structure (like error.issues)
+      else if (error.issues && Array.isArray(error.issues) && error.issues.length > 0) {
+        errorData = error.issues;
+      }
+      // Check if the error itself is an array
+      else if (Array.isArray(error) && error.length > 0) {
+        errorData = error;
+      }
+      
+      if (errorData) {
+        const fieldError = errorData.find(err => 
+          err.path && err.path[0] === fieldName
+        );
+        
+        if (fieldError) {
+          return fieldError.message;
+        }
+      }
+      
+      return "Validation failed";
+    }
+  };
+
+  // Validate field immediately when input changes
+  const handleNewInputChange = (field, value) => {
+    setNewFormData(prev => ({ ...prev, [field]: value }));
+
+    // Validate the field immediately and set error
+    const fieldError = validateNewField(field, value);
+    console.log("fieldError", fieldError);
+    setNewErrors(prev => ({ ...prev, [field]: fieldError }));
+  };
+
+  const handleNewFormSubmit = async (e) => {
+    e.preventDefault();
+
+    // Force validation of all fields when Save button is clicked
+    const newValidationErrors = {};
+
+    // Validate each field individually to ensure all errors are captured
+    Object.keys(newFormData).forEach(fieldName => {
+      const fieldError = validateNewField(fieldName, newFormData[fieldName]);
+      if (fieldError) {
+        newValidationErrors[fieldName] = fieldError;
+      }
+    });
+
+    // If there are validation errors, set them and return early
+    if (Object.keys(newValidationErrors).length > 0) {
+      setNewErrors(newValidationErrors);
+      return;
+    }
+
+    // If validation passes, clear errors and proceed
+    setNewErrors({});
+
+    try {
+      // Only send fields that have actually changed
+      const updateData = {};
+      if (newFormData.name !== (channel.name || "")) updateData.name = newFormData.name;
+      if (newFormData.displayName !== (channel.displayName || "")) updateData.displayName = newFormData.displayName;
+      if (newFormData.description !== (channel.description || "")) updateData.description = newFormData.description;
+      if (newFormData.type !== (channel.type || "public")) updateData.type = newFormData.type;
+
+      if (Object.keys(updateData).length === 0) {
+        toast.info("No changes to save");
+        return;
+      }
+
+      await dispatch(updateChannel({
+        channelId: channel._id,
+        updateData
+      })).unwrap();
+
+      // Show success message
+      toast.success("Channel updated successfully!");
+      
+      // Reset form to show updated values
+      handleNewFormReset();
+      
+    } catch (error) {
+      console.error("Failed to update channel:", error);
+      toast.error(error.message || "Failed to update channel");
+    }
+  };
+
+  const handleNewFormReset = () => {
+    if (channel) {
+      setNewFormData({
+        name: channel.name || "",
+        displayName: channel.displayName || "",
+        description: channel.description || "",
+        type: channel.type || "public"
+      });
+      setNewErrors({});
     }
   };
 
@@ -182,202 +291,334 @@ const SettingsSection = ({ channel, isAdmin, isManageMode }) => {
           <CardTitle className="text-base">Channel Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             {/* Channel Name */}
-               <div className="space-y-2">
-                 <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                   Channel Name *
-                 </Label>
-                 <Input
-                   id="name"
-                   type="text"
-                   value={formData.name}
-                   onChange={(e) => handleInputChange("name", e.target.value)}
-                   onBlur={() => handleFieldBlur("name")}
-                   className={errors.name ? "border-red-500 focus:ring-red-500" : ""}
-                   placeholder="Enter channel name"
-                 />
-                 <div className="min-h-[20px]">
-                   {errors.name && (
-                     <div className="flex items-center gap-2 text-sm text-red-600">
-                       <AlertCircle className="w-4 h-4" />
-                       {errors.name}
-                     </div>
-                   )}
-                 </div>
-               </div>
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                  Channel Name *
+                </Label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  onBlur={() => handleFieldBlur("name")}
+                  className={errors.name ? "border-red-500 focus:ring-red-500" : ""}
+                  placeholder="Enter channel name"
+                />
+                <div className="min-h-[20px]">
+                  {errors.name && (
+                    <div className="flex items-center gap-2 text-sm text-red-600">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.name}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                             {/* Display Name */}
-               <div className="space-y-2">
-                 <Label htmlFor="displayName" className="text-sm font-medium text-gray-700">
-                   Display Name
-                 </Label>
-                 <Input
-                   id="displayName"
-                   type="text"
-                   value={formData.displayName}
-                   onChange={(e) => handleInputChange("displayName", e.target.value)}
-                   onBlur={() => handleFieldBlur("displayName")}
-                   className={errors.displayName ? "border-red-500 focus:ring-red-500" : ""}
-                   placeholder="Enter display name (optional)"
-                 />
-                 <div className="min-h-[20px]">
-                   {errors.displayName && (
-                     <div className="flex items-center gap-2 text-sm text-red-600">
-                       <AlertCircle className="w-4 h-4" />
-                       {errors.displayName}
-                     </div>
-                   )}
-                 </div>
-               </div>
+              <div className="space-y-2">
+                <Label htmlFor="displayName" className="text-sm font-medium text-gray-700">
+                  Display Name
+                </Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  value={formData.displayName}
+                  onChange={(e) => handleInputChange("displayName", e.target.value)}
+                  onBlur={() => handleFieldBlur("displayName")}
+                  className={errors.displayName ? "border-red-500 focus:ring-red-500" : ""}
+                  placeholder="Enter display name (optional)"
+                />
+                <div className="min-h-[20px]">
+                  {errors.displayName && (
+                    <div className="flex items-center gap-2 text-sm text-red-600">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.displayName}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                             {/* Channel Type */}
-               <div className="space-y-2">
-                 <Label htmlFor="type" className="text-sm font-medium text-gray-700">
-                   Channel Type
-                 </Label>
-                 <Select
-                   value={formData.type}
-                   onValueChange={(value) => handleInputChange("type", value)}
-                   onOpenChange={(open) => {
-                     if (!open) {
-                       handleFieldBlur("type");
-                     }
-                   }}
-                 >
-                   <SelectTrigger className={errors.type ? "border-red-500 focus:ring-red-500" : ""}>
-                     <SelectValue placeholder="Select channel type" />
-                   </SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="public">
-                       <div className="flex items-center gap-2">
-                         <Lock className="w-4 h-4 text-green-600" />
-                         Public
-                       </div>
-                     </SelectItem>
-                     <SelectItem value="private">
-                       <div className="flex items-center gap-2">
-                         <Lock className="w-4 h-4 text-red-600" />
-                         Private
-                       </div>
-                     </SelectItem>
-                   </SelectContent>
-                 </Select>
-                 <div className="min-h-[20px]">
-                   {errors.type && (
-                     <div className="flex items-center gap-2 text-sm text-red-600">
-                       <AlertCircle className="w-4 h-4" />
-                       {errors.type}
-                     </div>
-                   )}
-                 </div>
-                 <p className="text-xs text-gray-500">
-                   {channel?.type === "private" 
-                     ? "Private channels cannot be converted to public"
-                     : "Public channels can be converted to private"
-                   }
-                 </p>
-               </div>
+              <div className="space-y-2">
+                <Label htmlFor="type" className="text-sm font-medium text-gray-700">
+                  Channel Type
+                </Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) => handleInputChange("type", value)}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      handleFieldBlur("type");
+                    }
+                  }}
+                >
+                  <SelectTrigger className={errors.type ? "border-red-500 focus:ring-red-500" : ""}>
+                    <SelectValue placeholder="Select channel type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">
+                      <div className="flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-green-600" />
+                        Public
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="private">
+                      <div className="flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-red-600" />
+                        Private
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="min-h-[20px]">
+                  {errors.type && (
+                    <div className="flex items-center gap-2 text-sm text-red-600">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.type}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">
+                  {channel?.type === "private"
+                    ? "Private channels cannot be converted to public"
+                    : "Public channels can be converted to private"
+                  }
+                </p>
+              </div>
 
-                             {/* Description */}
-               <div className="md:col-span-2 space-y-2">
-                 <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-                   Description
-                 </Label>
-                 <Textarea
-                   id="description"
-                   value={formData.description}
-                   onChange={(e) => handleInputChange("description", e.target.value)}
-                   onBlur={() => handleFieldBlur("description")}
-                   className={errors.description ? "border-red-500 focus:ring-red-500" : ""}
-                   placeholder="Enter channel description (optional)"
-                   rows={3}
-                 />
-                 <div className="min-h-[20px]">
-                   {errors.description && (
-                     <div className="flex items-center gap-2 text-sm text-red-600">
-                       <AlertCircle className="w-4 h-4" />
-                       {errors.description}
-                     </div>
-                   )}
-                 </div>
-               </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => handleInputChange("description", e.target.value)}
+                  onBlur={() => handleFieldBlur("description")}
+                  className={errors.description ? "border-red-500 focus:ring-red-500" : ""}
+                  placeholder="Enter channel description (optional)"
+                  rows={3}
+                />
+                <div className="min-h-[20px]">
+                  {errors.description && (
+                    <div className="flex items-center gap-2 text-sm text-red-600">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.description}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-                         {/* Action Buttons */}
-             <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
-               {/* Validation Summary */}
-               {Object.keys(errors).some(key => errors[key]) && (
-                 <div className="flex items-center gap-2 text-sm text-red-600">
-                   <AlertCircle className="w-4 h-4" />
-                   Please fix validation errors before saving
-                 </div>
-               )}
-               
-               {/* Test Validation Button - Temporary */}
-               <Button
-                 type="button"
-                 variant="outline"
-                 onClick={testValidation}
-                 className="bg-yellow-500 hover:bg-yellow-600 text-white"
-               >
-                 Test Validation
-               </Button>
-               
-               <Button
-                 type="submit"
-                 disabled={!isDirty || isUpdating || Object.keys(errors).some(key => errors[key])}
-                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
-               >
-                 {isUpdating ? (
-                   <div className="flex items-center gap-2">
-                     <div className="animate-spin rounded-full h-4 h-4 border-b-2 border-white"></div>
-                     Saving...
-                   </div>
-                 ) : (
-                   <>
-                     <Save className="w-4 h-4 mr-2" />
-                     Save Changes
-                   </>
-                 )}
-               </Button>
-               
-               {isDirty && (
-                 <Button
-                   type="button"
-                   variant="outline"
-                   onClick={handleReset}
-                   disabled={isUpdating}
-                 >
-                   Reset
-                 </Button>
-               )}
-             </div>
+            <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
+              {Object.keys(errors).some(key => errors[key]) && (
+                <div className="flex items-center gap-2 text-sm text-red-600">
+                  <AlertCircle className="w-4 h-4" />
+                  Please fix validation errors before saving
+                </div>
+              )}
 
-                         {/* Error Display */}
-             {updateError && (
-               <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
-                 <AlertCircle className="w-4 h-4 text-red-600" />
-                 <span className="text-sm text-red-700">{updateError}</span>
-               </div>
-             )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={testValidation}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              >
+                Test Validation
+              </Button>
 
-             {/* Debug Info - Temporary */}
-             <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-md">
-               <h4 className="font-semibold text-sm text-gray-700 mb-2">Debug Info:</h4>
-               <div className="text-xs text-gray-600 space-y-1">
-                 <div>Errors: {JSON.stringify(errors)}</div>
-                 <div>Form Data: {JSON.stringify(formData)}</div>
-                 <div>Is Dirty: {isDirty.toString()}</div>
-                 <div>Has Validation Errors: {Object.keys(errors).some(key => errors[key]).toString()}</div>
-               </div>
-             </div>
-           </form>
-         </CardContent>
-       </Card>
-     </div>
-   );
- };
+              <Button
+                type="submit"
+                disabled={!isDirty || isUpdating || Object.keys(errors).some(key => errors[key])}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
+              >
+                {isUpdating ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 h-4 border-b-2 border-white"></div>
+                    Saving...
+                  </div>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+
+              {isDirty && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleReset}
+                  disabled={isUpdating}
+                >
+                  Reset
+                </Button>
+              )}
+            </div>
+
+            {updateError && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                <AlertCircle className="w-4 h-4 text-red-600" />
+                <span className="text-sm text-red-700">{updateError}</span>
+              </div>
+            )}
+
+            <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-md">
+              <h4 className="font-semibold text-sm text-gray-700 mb-2">Debug Info:</h4>
+              <div className="text-xs text-gray-600 space-y-1">
+                <div>Errors: {JSON.stringify(errors)}</div>
+                <div>Form Data: {JSON.stringify(formData)}</div>
+                <div>Is Dirty: {isDirty.toString()}</div>
+                <div>Has Validation Errors: {Object.keys(errors).some(key => errors[key]).toString()}</div>
+              </div>
+            </div>
+          </form> */}
+
+          {/* New Channel Info Edit Form */}
+          <div className="mt-6">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Edit Channel Information</h4>
+
+            <form onSubmit={handleNewFormSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Channel Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="new-name" className="text-sm font-medium text-gray-700">
+                    Channel Name *
+                  </Label>
+                  <Input
+                    id="new-name"
+                    type="text"
+                    value={newFormData.name}
+                    onChange={(e) => handleNewInputChange("name", e.target.value)}
+                    className={newErrors.name ? "border-red-500 focus:ring-red-500" : ""}
+                    placeholder="Enter channel name"
+                  />
+                  <div className="min-h-[20px]">
+                    {newErrors.name && (
+                      <div className="flex items-center gap-2 text-sm text-red-600">
+                        <AlertCircle className="w-4 h-4" />
+                        {newErrors.name}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Display Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="new-displayName" className="text-sm font-medium text-gray-700">
+                    Display Name
+                  </Label>
+                  <Input
+                    id="new-displayName"
+                    type="text"
+                    value={newFormData.displayName}
+                    onChange={(e) => handleNewInputChange("displayName", e.target.value)}
+                    className={newErrors.displayName ? "border-red-500 focus:ring-red-500" : ""}
+                    placeholder="Enter display name (optional)"
+                  />
+                  <div className="min-h-[20px]">
+                    {newErrors.displayName && (
+                      <div className="flex items-center gap-2 text-sm text-red-600">
+                        <AlertCircle className="w-4 h-4" />
+                        {newErrors.displayName}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Channel Type */}
+                <div className="space-y-2">
+                  <Label htmlFor="new-type" className="text-sm font-medium text-gray-700">
+                    Channel Type
+                  </Label>
+                  <Select
+                    value={newFormData.type}
+                    onValueChange={(value) => handleNewInputChange("type", value)}
+                  >
+                    <SelectTrigger className={newErrors.type ? "border-red-500 focus:ring-red-500" : ""}>
+                      <SelectValue placeholder="Select channel type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-green-600" />
+                          Public
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="private">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-red-600" />
+                          Private
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="min-h-[20px]">
+                    {newErrors.type && (
+                      <div className="flex items-center gap-2 text-sm text-red-600">
+                        <AlertCircle className="w-4 h-4" />
+                        {newErrors.type}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {channel?.type === "private"
+                      ? "Private channels cannot be converted to public"
+                      : "Public channels can be converted to private"
+                    }
+                  </p>
+                </div>
+
+                {/* Description */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="new-description" className="text-sm font-medium text-gray-700">
+                    Description
+                  </Label>
+                  <Textarea
+                    id="new-description"
+                    value={newFormData.description}
+                    onChange={(e) => handleNewInputChange("description", e.target.value)}
+                    className={newErrors.description ? "border-red-500 focus:ring-red-500" : ""}
+                    placeholder="Enter channel description (optional)"
+                    rows={3}
+                  />
+                  <div className="min-h-[20px]">
+                    {newErrors.description && (
+                      <div className="flex items-center gap-2 text-sm text-red-600">
+                        <AlertCircle className="w-4 h-4" />
+                        {newErrors.description}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
+                <Button
+                  type="submit"
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={Object.keys(newErrors).some(key => newErrors[key])}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Channel Info
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleNewFormReset}
+                >
+                  Reset Form
+                </Button>
+              </div>
+            </form>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 export default SettingsSection;

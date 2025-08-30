@@ -29,11 +29,8 @@ const ChannelHeader = ({ channel, isAdmin, isManageMode, onBack }) => (
           {channel.displayName && (
             <p className="text-gray-600 text-lg">{channel.displayName}</p>
           )}
-          {channel.description && (
-            <p className="text-gray-500 text-sm mt-1">{channel.description}</p>
-          )}
           {/* Show current mode - LOCKED, NO SWITCHING */}
-          <div className="mt-2">
+          {/* <div className="mt-2">
             <Badge
               variant="outline"
               className={
@@ -44,7 +41,7 @@ const ChannelHeader = ({ channel, isAdmin, isManageMode, onBack }) => (
             >
               {isManageMode ? "🔒 Manage Mode" : "🔒 Open Channel Mode"}
             </Badge>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
